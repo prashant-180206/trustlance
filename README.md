@@ -731,7 +731,7 @@ Sensitive Pinata credentials must remain server-side.
 
 TrustLance uses wallet-based authentication through **Sign-In with Ethereum (SIWE)**.
 
-The conceptual flow is:
+The login setup is implemented. The conceptual flow is:
 
 ```text
 User
@@ -750,6 +750,64 @@ Supabase
 ```
 
 The private wallet key never leaves the user's wallet.
+
+### Login implementation
+
+```text
+trustlance/src/
+├── app/
+│   ├── (auth)/login/                       # /login page (SIWE UI)
+│   └── api/auth/
+│       ├── nonce/route.ts                  # POST — issues a one-time nonce
+│       └── verify/route.ts                 # POST — verifies signature, links/creates the user
+├── components/wallet/ConnectWalletButton.tsx
+├── lib/
+│   ├── siwe.ts                             # EIP-4361 message helpers + client API helpers
+│   └── supabase/admin.ts                   # server-only service-role Supabase client
+└── proxy.ts                                # refreshes the Supabase session cookie (Next 16 proxy)
+```
+
+The `siwe` package was added to `trustlance/package.json` (`pnpm add siwe`) for
+nonce generation and server-side EIP-4361 message parsing/verification.
+
+The flow works as follows:
+
+```text
+1. User connects the wallet on /login (Wagmi + MetaMask)
+2. POST /api/auth/nonce       → nonce stored in the auth_nonces table (10 minute TTL)
+3. Wallet signs the EIP-4361 message (the key never leaves the wallet)
+4. POST /api/auth/verify      → verifies signature + nonce against the stored row,
+                                then consumes the nonce (single use)
+5. First login: a Supabase auth user is created with
+   user_metadata.wallet_address; the handle_new_user trigger inserts the
+   matching profiles row. An email-magiclink token is generated via the
+   Supabase admin API (generateLink)
+6. Client exchanges the token with supabase.auth.verifyOtp({ type: 'magiclink' })
+7. Session cookies are stored and refreshed by src/proxy.ts
+8. Redirect to /dashboard/<role> based on the user's profile
+```
+
+Since Supabase Auth requires an email per user, each wallet is backed by a
+deterministic email (`0x...@wallet.trustlance.local`), so the same wallet always
+resolves to the same Supabase user and profile row.
+
+### Environment variables
+
+Inside `trustlance/.env.local` the Supabase variables from [#3](#3-supabase-setup)
+are used, plus one server-only variable:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+
+# Server-only (never NEXT_PUBLIC_). Copy the Service Role Key from:
+#   local:  supabase status        (sb_secret_...)
+#   cloud:  Project Settings → API → service_role
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
+
+> The service-role key bypasses RLS and is only read by server routes
+> (`src/lib/supabase/admin.ts`). Never expose it in the browser.
 
 ---
 
@@ -901,6 +959,8 @@ Wagmi                       ✅
 Viem                        ✅
 MetaMask localhost          ✅
 Factory address config      ✅
+Wallet connection          ✅
+SIWE / login               ✅
 ```
 
 The next development stage is integrating the actual **TrustLanceFactory and TrustLanceEscrow contract APIs into the Next.js service layer**.

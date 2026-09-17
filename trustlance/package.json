@@ -16,6 +16,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "root": "github:tanstack/react-query",
+    "siwe": "^3.0.0",
     "viem": "^2.56.3",
     "wagmi": "^3.7.7"
   },
