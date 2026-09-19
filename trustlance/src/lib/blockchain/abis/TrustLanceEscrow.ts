@@ -1,4 +1,4 @@
-export const escrowAbi = [
+export const TrustLanceEscrowABI = [
     {
         "inputs": [
             {
@@ -7,9 +7,14 @@ export const escrowAbi = [
                 "type": "address"
             },
             {
-                "internalType": "address",
-                "name": "_disputeResolver",
-                "type": "address"
+                "internalType": "uint256",
+                "name": "_clientReviewPeriod",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_disputePeriod",
+                "type": "uint256"
             }
         ],
         "stateMutability": "nonpayable",
@@ -28,6 +33,12 @@ export const escrowAbi = [
                 "internalType": "uint256",
                 "name": "index",
                 "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "disputeDeadline",
+                "type": "uint256"
             }
         ],
         "name": "DisputeRaised",
@@ -44,12 +55,31 @@ export const escrowAbi = [
             },
             {
                 "indexed": false,
-                "internalType": "bool",
-                "name": "favorFreelancer",
-                "type": "bool"
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
             }
         ],
-        "name": "DisputeResolved",
+        "name": "DisputeResolvedForClient",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "index",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "DisputeResolvedForFreelancer",
         "type": "event"
     },
     {
@@ -92,6 +122,25 @@ export const escrowAbi = [
                 "internalType": "uint256",
                 "name": "index",
                 "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "MilestoneAutoApproved",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "index",
+                "type": "uint256"
             }
         ],
         "name": "MilestoneRejected",
@@ -111,6 +160,12 @@ export const escrowAbi = [
                 "internalType": "string",
                 "name": "cid",
                 "type": "string"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "reviewDeadline",
+                "type": "uint256"
             }
         ],
         "name": "MilestoneSubmitted",
@@ -139,6 +194,19 @@ export const escrowAbi = [
             }
         ],
         "name": "PaymentReleased",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "requestedBy",
+                "type": "address"
+            }
+        ],
+        "name": "ProjectCancellationRequested",
         "type": "event"
     },
     {
@@ -181,7 +249,46 @@ export const escrowAbi = [
                 "type": "uint256"
             }
         ],
+        "name": "acceptRejection",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "index",
+                "type": "uint256"
+            }
+        ],
         "name": "approveMilestone",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "index",
+                "type": "uint256"
+            }
+        ],
+        "name": "autoApproveMilestone",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "index",
+                "type": "uint256"
+            }
+        ],
+        "name": "autoResolveDispute",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -201,7 +308,7 @@ export const escrowAbi = [
     },
     {
         "inputs": [],
-        "name": "cancelProject",
+        "name": "cancelProjectBeforeAward",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -234,12 +341,38 @@ export const escrowAbi = [
     },
     {
         "inputs": [],
-        "name": "disputeResolver",
+        "name": "clientCancellationRequested",
         "outputs": [
             {
-                "internalType": "address",
+                "internalType": "bool",
                 "name": "",
-                "type": "address"
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "clientReviewPeriod",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "disputePeriod",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -253,6 +386,19 @@ export const escrowAbi = [
                 "internalType": "address",
                 "name": "",
                 "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "freelancerCancellationRequested",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
             }
         ],
         "stateMutability": "view",
@@ -331,6 +477,21 @@ export const escrowAbi = [
                 "internalType": "string",
                 "name": "deliverableCID",
                 "type": "string"
+            },
+            {
+                "internalType": "uint256",
+                "name": "submittedAt",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "reviewDeadline",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "disputeDeadline",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -378,6 +539,21 @@ export const escrowAbi = [
                 "internalType": "string",
                 "name": "deliverableCID",
                 "type": "string"
+            },
+            {
+                "internalType": "uint256",
+                "name": "submittedAt",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "reviewDeadline",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "disputeDeadline",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -410,19 +586,8 @@ export const escrowAbi = [
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "index",
-                "type": "uint256"
-            },
-            {
-                "internalType": "bool",
-                "name": "favorFreelancer",
-                "type": "bool"
-            }
-        ],
-        "name": "resolveDispute",
+        "inputs": [],
+        "name": "requestCancellation",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -457,5 +622,18 @@ export const escrowAbi = [
         ],
         "stateMutability": "view",
         "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "index",
+                "type": "uint256"
+            }
+        ],
+        "name": "withdrawRejection",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     }
-]
+] as const;

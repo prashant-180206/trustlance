@@ -1,9 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useAuth } from "../hooks/provider/AuthProvider";
+import { authService } from "../lib/services/AuthService";
 
 export const Route = createFileRoute("/")({
-  component: Home,
+  component: LoginPage,
 });
 
-function Home() {
-  return <h2 className="bg-red-400 underline">Home page andage again</h2>;
+function LoginPage() {
+  const { signIn } = useAuth();
+
+  const handleShowUser = async () => {
+    const user = await authService.getSession();
+    console.log("Current user:", user);
+  }
+
+  return (
+    <div>
+      <h1>TrustLance</h1>
+
+      <p>
+        Connect your Ethereum wallet to continue.
+      </p>
+
+      <button onClick={signIn}>
+        Sign in with Wallet
+      </button>
+
+      <button
+        onClick={handleShowUser}
+      >
+        showuser
+      </button >
+    </div >
+  );
 }
