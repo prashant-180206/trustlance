@@ -2,6 +2,8 @@
 # TrustLance - Local Supabase
 # ============================================================
 
+# supabase gen types typescript --local > ../trustlance/src/types/database.types.ts
+
 $ErrorActionPreference = "Continue"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

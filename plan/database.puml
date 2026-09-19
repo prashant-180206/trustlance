@@ -1,0 +1,169 @@
+@startuml TrustLance Database
+
+hide methods
+hide stereotypes
+skinparam linetype ortho
+skinparam entity {
+    BackgroundColor #F8F9FA
+    BorderColor #343A40
+}
+
+' ============================================================
+' ENUMS
+' ============================================================
+
+enum account_type {
+    freelancer
+    company
+}
+
+enum project_status {
+    draft
+    open
+    in_progress
+    completed
+    cancelled
+}
+
+enum application_status {
+    pending
+    accepted
+    rejected
+    withdrawn
+}
+
+' ============================================================
+' SUPABASE AUTH
+' ============================================================
+
+entity "auth.users" as auth_users {
+    * id : UUID <<PK>>
+    --
+    created_at : TIMESTAMPTZ
+}
+
+' ============================================================
+' COMMON PROFILE
+' ============================================================
+
+entity "profiles" as profiles {
+    * id : UUID <<PK, FK>>
+    --
+    wallet_address : TEXT <<UNIQUE>>
+    account_type : account_type
+    display_name : TEXT
+    avatar_url : TEXT
+    created_at : TIMESTAMPTZ
+    updated_at : TIMESTAMPTZ
+}
+
+' ============================================================
+' FREELANCER
+' ============================================================
+
+entity "freelancer_profiles" as freelancer_profiles {
+    * profile_id : UUID <<PK, FK>>
+    --
+    headline : TEXT
+    bio : TEXT
+    experience : TEXT
+    hourly_rate : NUMERIC
+    availability : BOOLEAN
+    created_at : TIMESTAMPTZ
+    updated_at : TIMESTAMPTZ
+}
+
+' ============================================================
+' COMPANY
+' ============================================================
+
+entity "company_profiles" as company_profiles {
+    * profile_id : UUID <<PK, FK>>
+    --
+    company_name : TEXT
+    description : TEXT
+    industry : TEXT
+    website : TEXT
+    created_at : TIMESTAMPTZ
+    updated_at : TIMESTAMPTZ
+}
+
+' ============================================================
+' SKILLS
+' ============================================================
+
+entity "skills" as skills {
+    * id : UUID <<PK>>
+    --
+    name : TEXT <<UNIQUE>>
+    created_at : TIMESTAMPTZ
+}
+
+entity "freelancer_skills" as freelancer_skills {
+    * freelancer_id : UUID <<PK, FK>>
+    * skill_id : UUID <<PK, FK>>
+}
+
+entity "project_skills" as project_skills {
+    * project_id : UUID <<PK, FK>>
+    * skill_id : UUID <<PK, FK>>
+}
+
+' ============================================================
+' PROJECTS
+' ============================================================
+
+entity "projects" as projects {
+    * id : UUID <<PK>>
+    --
+    company_id : UUID <<FK>>
+    title : TEXT
+    description : TEXT
+    budget : NUMERIC
+    deadline : TIMESTAMPTZ
+    status : project_status
+    created_at : TIMESTAMPTZ
+    updated_at : TIMESTAMPTZ
+}
+
+' ============================================================
+' APPLICATIONS
+' ============================================================
+
+entity "applications" as applications {
+    * id : UUID <<PK>>
+    --
+    project_id : UUID <<FK, UNIQUE>>
+    freelancer_id : UUID <<FK, UNIQUE>>
+    proposal : TEXT
+    proposed_amount : NUMERIC
+    status : application_status
+    created_at : TIMESTAMPTZ
+    updated_at : TIMESTAMPTZ
+}
+
+' ============================================================
+' RELATIONSHIPS
+' ============================================================
+
+auth_users ||--|| profiles : "owns"
+
+profiles ||--o| freelancer_profiles : "has"
+profiles ||--o| company_profiles : "has"
+
+freelancer_profiles ||--o{ freelancer_skills : "has"
+skills ||--o{ freelancer_skills : "assigned to"
+
+company_profiles ||--o{ projects : "creates"
+projects ||--o{ project_skills : "requires"
+skills ||--o{ project_skills : "required by"
+
+projects ||--o{ applications : "receives"
+freelancer_profiles ||--o{ applications : "submits"
+
+' Enum references
+profiles .> account_type : "uses"
+projects .> project_status : "uses"
+applications .> application_status : "uses"
+
+@enduml
