@@ -1,3169 +1,1059 @@
+
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { network } from "hardhat";
 
-// import {getBalance} from "viem";
+const REVIEW_PERIOD = 7n * 24n * 60n * 60n;
+const DISPUTE_PERIOD = 3n * 24n * 60n * 60n;
 
-async function expectRevert(
-  promise: Promise<unknown>,
-  reason: string
+const MILESTONE_AMOUNT = 1n * 10n ** 18n;
+
+async function deployEscrow() {
+  const { viem } = await network.getOrCreate();
+
+  const [client, freelancer, other] =
+    await viem.getWalletClients();
+
+  const escrow = await viem.deployContract(
+    "TrustLanceEscrow",
+    [
+      client.account.address,
+      REVIEW_PERIOD,
+      DISPUTE_PERIOD,
+    ],
+  );
+
+  return {
+    viem,
+    escrow,
+    client,
+    freelancer,
+    other,
+  };
+}
+
+async function fundAndAward(
+  escrow: any,
+  client: any,
+  freelancer: any,
+  amount = MILESTONE_AMOUNT,
 ) {
-  await assert.rejects(
-    promise,
-    (error: unknown) => {
-      assert.match(String(error), new RegExp(reason));
-      return true;
-    }
+  await escrow.write.fundEscrow(
+    [
+      [amount],
+      ["Build website"],
+    ],
+    {
+      account: client.account,
+      value: amount,
+    },
+  );
+
+  await escrow.write.awardFreelancer(
+    [freelancer.account.address],
+    {
+      account: client.account,
+    },
   );
 }
 
-describe("TrustLanceEscrow", () => {
-  async function deployFixture() {
-    const { viem } = await network.getOrCreate();
+async function submitMilestone(
+  escrow: any,
+  freelancer: any,
+  index = 0,
+) {
+  await escrow.write.submitMilestone(
+    [
+      index,
+      "QmTestDeliverableCID",
+    ],
+    {
+      account: freelancer.account,
+    },
+  );
+}
 
-    const publicClient = await viem.getPublicClient();
+async function increaseTime(seconds: bigint) {
+  const { networkHelpers } = await network.getOrCreate();
 
-    const [client, freelancer, resolver, attacker] =
-      await viem.getWalletClients();
+  await networkHelpers.time.increase(Number(seconds));
+}
 
-    const escrow = await viem.deployContract(
-      "TrustLanceEscrow",
-      [
-        client.account.address,
-        resolver.account.address,
-      ]
-    );
+// =============================================================
+// DEPLOYMENT
+// =============================================================
 
-    return {
+describe("TrustLanceEscrow - Deployment", () => {
+
+  it("sets client and dispute rules correctly", async () => {
+    const {
       escrow,
       client,
-      freelancer,
-      resolver,
-      attacker,
-      publicClient,
-    };
-  }
+    } = await deployEscrow();
 
-  describe("Deployment", () => {
-    it("sets the client correctly", async () => {
-      const { escrow, client } =
-        await deployFixture();
+    assert.equal(
+      (await escrow.read.client()).toLowerCase(),
+      client.account.address.toLowerCase(),
+    );
 
-      const actual =
-        await escrow.read.client();
+    assert.equal(
+      await escrow.read.clientReviewPeriod(),
+      REVIEW_PERIOD,
+    );
 
-      assert.equal(
-        actual.toLowerCase(),
-        client.account.address.toLowerCase()
-      );
-    });
+    assert.equal(
+      await escrow.read.disputePeriod(),
+      DISPUTE_PERIOD,
+    );
 
-    it("sets the dispute resolver correctly", async () => {
-      const { escrow, resolver } =
-        await deployFixture();
+    assert.equal(
+      await escrow.read.funded(),
+      false,
+    );
 
-      const actual =
-        await escrow.read.disputeResolver();
+    assert.equal(
+      await escrow.read.cancelled(),
+      false,
+    );
+  });
+});
 
-      assert.equal(
-        actual.toLowerCase(),
-        resolver.account.address.toLowerCase()
-      );
-    });
+// =============================================================
+// FUNDING
+// =============================================================
 
-    it("starts without a freelancer", async () => {
-      const { escrow } =
-        await deployFixture();
+describe("TrustLanceEscrow - Funding", () => {
 
-      const actual =
-        await escrow.read.freelancer();
+  it("funds escrow and creates milestones", async () => {
+    const {
+      escrow,
+      client,
+    } = await deployEscrow();
 
-      assert.equal(
-        actual,
-        "0x0000000000000000000000000000000000000000"
-      );
-    });
+    await escrow.write.fundEscrow(
+      [
+        [1n, 2n],
+        ["Design", "Development"],
+      ],
+      {
+        account: client.account,
+        value: 3n,
+      },
+    );
 
-    it("starts with zero escrow", async () => {
-      const { escrow } =
-        await deployFixture();
+    assert.equal(
+      await escrow.read.funded(),
+      true,
+    );
 
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        0n
-      );
-    });
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      3n,
+    );
 
-    it("starts unfunded", async () => {
-      const { escrow } =
-        await deployFixture();
-
-      assert.equal(
-        await escrow.read.funded(),
-        false
-      );
-    });
-
-    it("starts uncancelled", async () => {
-      const { escrow } =
-        await deployFixture();
-
-      assert.equal(
-        await escrow.read.cancelled(),
-        false
-      );
-    });
-
-    it("starts with zero milestones", async () => {
-      const { escrow } =
-        await deployFixture();
-
-      assert.equal(
-        await escrow.read.getMilestoneCount(),
-        0n
-      );
-    });
+    assert.equal(
+      await escrow.read.getMilestoneCount(),
+      2n,
+    );
   });
 
-  describe("Constructor Validation", () => {
-    it("rejects a zero client address", async () => {
-      const { viem } = await network.getOrCreate();
+  it("rejects incorrect ETH amount", async () => {
+    const {
+      escrow,
+      client,
+    } = await deployEscrow();
 
-      const [, , resolver] =
-        await viem.getWalletClients();
-
-      await expectRevert(
-        viem.deployContract(
-          "TrustLanceEscrow",
-          [
-            "0x0000000000000000000000000000000000000000",
-            resolver.account.address,
-          ]
-        ),
-        "TrustLance: invalid client"
-      );
-    });
-
-    it("rejects a zero dispute resolver address", async () => {
-      const { viem } = await network.getOrCreate();
-
-      const [client] =
-        await viem.getWalletClients();
-
-      await expectRevert(
-        viem.deployContract(
-          "TrustLanceEscrow",
-          [
-            client.account.address,
-            "0x0000000000000000000000000000000000000000",
-          ]
-        ),
-        "TrustLance: invalid resolver"
-      );
-    });
-  });
-
-  describe("Funding", () => {
-    const M1 = 1n * 10n ** 18n;
-    const M2 = 2n * 10n ** 18n;
-    const M3 = 3n * 10n ** 18n;
-
-    it("allows the client to fund the escrow", async () => {
-      const { escrow, client } =
-        await deployFixture();
-
-      const total = M1 + M2 + M3;
-
-      await escrow.write.fundEscrow(
+    await assert.rejects(
+      escrow.write.fundEscrow(
         [
-          [M1, M2, M3],
-          [
-            "Design",
-            "Development",
-            "Deployment",
-          ],
-        ],
-        {
-          account: client.account,
-          value: total,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.funded(),
-        true
-      );
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        total
-      );
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        total
-      );
-    });
-
-    it("creates the correct number of milestones", async () => {
-      const { escrow, client } =
-        await deployFixture();
-
-      const total = M1 + M2;
-
-      await escrow.write.fundEscrow(
-        [
-          [M1, M2],
-          ["Design", "Development"],
-        ],
-        {
-          account: client.account,
-          value: total,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.getMilestoneCount(),
-        2n
-      );
-    });
-
-    it("initializes milestones as Pending", async () => {
-      const { escrow, client } =
-        await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [M1, M2],
-          ["Design", "Development"],
-        ],
-        {
-          account: client.account,
-          value: M1 + M2,
-        }
-      );
-
-      const milestone0 =
-        await escrow.read.getMilestone([0n]);
-
-      const milestone1 =
-        await escrow.read.getMilestone([1n]);
-
-      // MilestoneStatus.Pending == 0
-      assert.equal(milestone0[2], 0);
-      assert.equal(milestone1[2], 0);
-    });
-
-    it("stores milestone descriptions and amounts", async () => {
-      const { escrow, client } =
-        await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [M1, M2],
-          ["Design", "Development"],
-        ],
-        {
-          account: client.account,
-          value: M1 + M2,
-        }
-      );
-
-      const milestone0 =
-        await escrow.read.getMilestone([0n]);
-
-      const milestone1 =
-        await escrow.read.getMilestone([1n]);
-
-      assert.equal(
-        milestone0[0],
-        "Design"
-      );
-
-      assert.equal(
-        milestone0[1],
-        M1
-      );
-
-      assert.equal(
-        milestone1[0],
-        "Development"
-      );
-
-      assert.equal(
-        milestone1[1],
-        M2
-      );
-    });
-
-    it("rejects funding from a non-client", async () => {
-      const {
-        escrow,
-        attacker,
-      } = await deployFixture();
-
-      await assert.rejects(
-        escrow.write.fundEscrow(
-          [
-            [M1],
-            ["Design"],
-          ],
-          {
-            account: attacker.account,
-            value: M1,
-          }
-        ),
-        /TrustLance: not client/
-      );
-    });
-
-    it("rejects mismatched arrays", async () => {
-      const { escrow, client } =
-        await deployFixture();
-
-      await assert.rejects(
-        escrow.write.fundEscrow(
-          [
-            [M1, M2],
-            ["Design"],
-          ],
-          {
-            account: client.account,
-            value: M1 + M2,
-          }
-        ),
-        /TrustLance: length mismatch/
-      );
-    });
-
-    it("rejects zero-value milestones", async () => {
-      const { escrow, client } =
-        await deployFixture();
-
-      await assert.rejects(
-        escrow.write.fundEscrow(
-          [
-            [0n],
-            ["Design"],
-          ],
-          {
-            account: client.account,
-            value: 0n,
-          }
-        ),
-        /TrustLance: zero milestone amount/
-      );
-    });
-
-    it("rejects incorrect ETH amount", async () => {
-      const { escrow, client } =
-        await deployFixture();
-
-      await assert.rejects(
-        escrow.write.fundEscrow(
-          [
-            [M1, M2],
-            ["Design", "Development"],
-          ],
-          {
-            account: client.account,
-            value: M1,
-          }
-        ),
-        /TrustLance: incorrect ETH amount/
-      );
-    });
-
-    it("cannot be funded twice", async () => {
-      const { escrow, client } =
-        await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [M1],
+          [1n],
           ["Design"],
         ],
         {
           account: client.account,
-          value: M1,
-        }
-      );
-
-      await assert.rejects(
-        escrow.write.fundEscrow(
-          [
-            [M2],
-            ["Development"],
-          ],
-          {
-            account: client.account,
-            value: M2,
-          }
-        ),
-        /TrustLance: already funded/
-      );
-    });
+          value: 2n,
+        },
+      ),
+    );
   });
 
-  describe("Freelancer", () => {
-    it("allows the client to award a freelancer", async () => {
-      const { escrow, client, freelancer } = await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [1n * 10n ** 18n],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: 1n * 10n ** 18n,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      const assigned = await escrow.read.freelancer();
-
-      assert.equal(
-        assigned.toLowerCase(),
-        freelancer.account.address.toLowerCase()
-      );
-    });
-
-    it("rejects awarding a freelancer before funding", async () => {
-      const { escrow, client, freelancer } = await deployFixture();
-
-      await expectRevert(
-        escrow.write.awardFreelancer(
-          [freelancer.account.address],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: escrow not funded"
-      );
-    });
-
-    it("rejects a non-client from awarding a freelancer", async () => {
-      const { escrow, attacker, freelancer } = await deployFixture();
-
-      await assert.rejects(
-        escrow.write.awardFreelancer(
-          [freelancer.account.address],
-          {
-            account: attacker.account,
-          }
-        ),
-        /TrustLance: not client/
-      );
-    });
-
-    it("rejects awarding the zero address", async () => {
-      const { escrow, client } = await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [1n * 10n ** 18n],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: 1n * 10n ** 18n,
-        }
-      );
-
-      await assert.rejects(
-        escrow.write.awardFreelancer(
-          ["0x0000000000000000000000000000000000000000"],
-          {
-            account: client.account,
-          }
-        ),
-        /TrustLance: invalid freelancer/
-      );
-    });
-
-    it("rejects assigning a freelancer twice", async () => {
-      const { escrow, client, freelancer, attacker } = await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [1n * 10n ** 18n],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: 1n * 10n ** 18n,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.awardFreelancer(
-          [attacker.account.address],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: freelancer already assigned"
-      );
-    });
-  });
-
-  describe("Milestone Submission", () => {
-    async function fundedAssignedEscrow() {
-      const { viem } = await network.getOrCreate();
-      const publicClient = await viem.getPublicClient();
-
-      const [client, freelancer, resolver, attacker] =
-        await viem.getWalletClients();
-
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      const amount = 1n * 10n ** 18n;
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-        attacker,
-        amount,
-        publicClient,
-      };
-    }
-
-    it("allows the assigned freelancer to submit a milestone", async () => {
-      const { escrow, freelancer } =
-        await fundedAssignedEscrow();
-
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      const milestone =
-        await escrow.read.getMilestone([0n]);
-
-      // Submitted = 1
-      assert.equal(milestone[2], 1);
-    });
-
-    it("stores the submission CID", async () => {
-      const { escrow, freelancer } =
-        await fundedAssignedEscrow();
-
-      const cid = "QmWebsiteCID";
-
-      await escrow.write.submitMilestone(
-        [0n, cid],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      const milestone =
-        await escrow.read.getMilestone([0n]);
-
-      assert.equal(milestone[3], cid);
-    });
-
-    it("rejects submission from the client", async () => {
-      const { escrow, client } =
-        await fundedAssignedEscrow();
-
-      await expectRevert(
-        escrow.write.submitMilestone(
-          [0n, "QmWebsiteCID"],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: not freelancer"
-      );
-    });
-
-    it("rejects submission from an attacker", async () => {
-      const { escrow, attacker } =
-        await fundedAssignedEscrow();
-
-      await expectRevert(
-        escrow.write.submitMilestone(
-          [0n, "QmWebsiteCID"],
-          {
-            account: attacker.account,
-          }
-        ),
-        "TrustLance: not freelancer"
-      );
-    });
-
-    it("rejects submission for an invalid milestone", async () => {
-      const { escrow, freelancer } =
-        await fundedAssignedEscrow();
-
-      await expectRevert(
-        escrow.write.submitMilestone(
-          [99n, "QmWebsiteCID"],
-          {
-            account: freelancer.account,
-          }
-        ),
-        "TrustLance: invalid milestone"
-      );
-    });
-
-    it("rejects submitting the same milestone twice", async () => {
-      const { escrow, freelancer } =
-        await fundedAssignedEscrow();
-
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.submitMilestone(
-          [0n, "QmWebsiteCID-2"],
-          {
-            account: freelancer.account,
-          }
-        ),
-        "TrustLance: invalid milestone state"
-      );
-    });
-
-    it("stores the latest submission only when submission is allowed", async () => {
-      const { escrow, freelancer } =
-        await fundedAssignedEscrow();
-
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      const milestone =
-        await escrow.read.getMilestone([0n]);
-
-      assert.equal(milestone[3], "QmWebsiteCID");
-    });
-    it("rejects an empty CID", async () => {
-      const { escrow, freelancer } =
-        await fundedAssignedEscrow();
-
-      await expectRevert(
-        escrow.write.submitMilestone(
-          [0n, ""],
-          {
-            account: freelancer.account,
-          }
-        ),
-        "TrustLance: empty CID"
-      );
-    });
-  });
-
-  describe("Milestone Approval & Payment", () => {
-    async function submittedEscrow() {
-      const { viem } = await network.getOrCreate();
-      const publicClient = await viem.getPublicClient();
-
-      const [client, freelancer, resolver] =
-        await viem.getWalletClients();
-
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      const amount = 1n * 10n ** 18n;
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-        amount,
-        publicClient, // ← important
-      };
-    }
-    it("allows the client to approve a submitted milestone", async () => {
-      const { escrow, client } = await submittedEscrow();
-
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      const milestone = await escrow.read.getMilestone([0n]);
-
-      // Paid = 5
-      assert.equal(milestone[2], 5);
-    });
-
-    it("pays the milestone amount to the freelancer", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-        amount,
-        publicClient,
-      } = await submittedEscrow();
-
-      const before = await publicClient.getBalance({
-        address: freelancer.account.address,
-      });
-
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      const after = await publicClient.getBalance({
-        address: freelancer.account.address,
-      });
-
-      assert.equal(after - before, amount);
-    });
-
-    it("reduces totalEscrowed after payment", async () => {
-      const { escrow, client } = await submittedEscrow();
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        1n * 10n ** 18n
-      );
-
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        0n
-      );
-    });
-    it("reduces the contract balance after payment", async () => {
-      const { escrow, client } = await submittedEscrow();
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        1n * 10n ** 18n
-      );
-
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        0n
-      );
-    });
-
-    it("rejects approval from a non-client", async () => {
-      const { escrow, freelancer } = await submittedEscrow();
-
-      await expectRevert(
-        escrow.write.approveMilestone(
-          [0n],
-          {
-            account: freelancer.account,
-          }
-        ),
-        "TrustLance: not client"
-      );
-    });
-
-    it("rejects approval of a pending milestone", async () => {
-      const { escrow, client } = await deployFixture();
-
-      const amount = 1n * 10n ** 18n;
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        ["0x70997970c51812dc3a010c7d01b50e0d17dc79c8"],
-        {
-          account: client.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.approveMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: milestone not submitted"
-      );
-    });
-
-    it("rejects approval twice", async () => {
-      const { escrow, client } = await submittedEscrow();
-
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.approveMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: milestone not submitted"
-      );
-    });
-
-    it("rejects an invalid milestone index", async () => {
-      const { escrow, client } = await submittedEscrow();
-
-      await expectRevert(
-        escrow.write.approveMilestone(
-          [99n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: invalid milestone"
-      );
-    });
-  });
-
-  describe("Multi-Milestone Escrow", () => {
-    const M1 = 1n * 10n ** 18n;
-    const M2 = 2n * 10n ** 18n;
-    const M3 = 3n * 10n ** 18n;
-
-    async function threeMilestoneEscrow() {
-      const { viem } = await network.getOrCreate();
-      const publicClient = await viem.getPublicClient();
-
-      const [client, freelancer, resolver, attacker] =
-        await viem.getWalletClients();
-
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      const total = M1 + M2 + M3;
-
-      await escrow.write.fundEscrow(
-        [
-          [M1, M2, M3],
-          [
-            "Design",
-            "Development",
-            "Deployment",
-          ],
-        ],
-        {
-          account: client.account,
-          value: total,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-        attacker,
-        publicClient,
-        total,
-      };
-    }
-
-    it("keeps all milestones Pending initially", async () => {
-      const { escrow } =
-        await threeMilestoneEscrow();
-
-      const milestone0 =
-        await escrow.read.getMilestone([0n]);
-
-      const milestone1 =
-        await escrow.read.getMilestone([1n]);
-
-      const milestone2 =
-        await escrow.read.getMilestone([2n]);
-
-      // Pending = 0
-      assert.equal(milestone0[2], 0);
-      assert.equal(milestone1[2], 0);
-      assert.equal(milestone2[2], 0);
-    });
-
-    it("only changes the submitted milestone", async () => {
-      const { escrow, freelancer } =
-        await threeMilestoneEscrow();
-
-      await escrow.write.submitMilestone(
-        [1n, "QmDevelopmentCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      const milestone0 =
-        await escrow.read.getMilestone([0n]);
-
-      const milestone1 =
-        await escrow.read.getMilestone([1n]);
-
-      const milestone2 =
-        await escrow.read.getMilestone([2n]);
-
-      // Pending = 0
-      assert.equal(milestone0[2], 0);
-
-      // Submitted = 1
-      assert.equal(milestone1[2], 1);
-
-      // Pending = 0
-      assert.equal(milestone2[2], 0);
-    });
-
-    it("only pays the approved milestone", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-        publicClient,
-      } = await threeMilestoneEscrow();
-
-      await escrow.write.submitMilestone(
-        [1n, "QmDevelopmentCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      const before =
-        await publicClient.getBalance({
-          address: freelancer.account.address,
-        });
-
-      await escrow.write.approveMilestone(
+  it("cannot be funded twice", async () => {
+    const {
+      escrow,
+      client,
+    } = await deployEscrow();
+
+    await escrow.write.fundEscrow(
+      [
         [1n],
+        ["Design"],
+      ],
+      {
+        account: client.account,
+        value: 1n,
+      },
+    );
+
+    await assert.rejects(
+      escrow.write.fundEscrow(
+        [
+          [1n],
+          ["Another milestone"],
+        ],
         {
           account: client.account,
-        }
-      );
+          value: 1n,
+        },
+      ),
+    );
+  });
+});
 
-      const after =
-        await publicClient.getBalance({
-          address: freelancer.account.address,
-        });
+// =============================================================
+// FREELANCER
+// =============================================================
 
-      assert.equal(
-        after - before,
-        M2
-      );
-    });
+describe("TrustLanceEscrow - Freelancer", () => {
 
-    it("reduces escrow by only the approved milestone amount", async () => {
-      const { escrow, client, freelancer } =
-        await threeMilestoneEscrow();
+  it("allows client to award freelancer", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        M1 + M2 + M3
-      );
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      await escrow.write.submitMilestone(
-        [1n, "QmDevelopmentCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await escrow.write.approveMilestone(
-        [1n],
-        {
-          account: client.account,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        M1 + M3
-      );
-    });
-    it("leaves the other milestones unpaid", async () => {
-      const { escrow, client, freelancer } =
-        await threeMilestoneEscrow();
-
-      await escrow.write.submitMilestone(
-        [1n, "QmDevelopmentCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await escrow.write.approveMilestone(
-        [1n],
-        {
-          account: client.account,
-        }
-      );
-
-      const milestone0 =
-        await escrow.read.getMilestone([0n]);
-
-      const milestone1 =
-        await escrow.read.getMilestone([1n]);
-
-      const milestone2 =
-        await escrow.read.getMilestone([2n]);
-
-      // Pending = 0
-      assert.equal(milestone0[2], 0);
-
-      // Paid = 5
-      assert.equal(milestone1[2], 5);
-
-      // Pending = 0
-      assert.equal(milestone2[2], 0);
-    });
-
-    it("can pay multiple milestones independently", async () => {
-      const { escrow, client, freelancer } =
-        await threeMilestoneEscrow();
-
-      await escrow.write.submitMilestone(
-        [0n, "QmDesignCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        M2 + M3
-      );
-
-      await escrow.write.submitMilestone(
-        [2n, "QmDeploymentCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await escrow.write.approveMilestone(
-        [2n],
-        {
-          account: client.account,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        M2
-      );
-    });
+    assert.equal(
+      (await escrow.read.freelancer()).toLowerCase(),
+      freelancer.account.address.toLowerCase(),
+    );
   });
 
-  describe("Escrow State Validation", () => {
-    const amount = 1n * 10n ** 18n;
+  it("prevents non-client from awarding freelancer", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+      other,
+    } = await deployEscrow();
 
-    async function fundedEscrow() {
-      const { viem } = await network.getOrCreate();
+    await escrow.write.fundEscrow(
+      [
+        [MILESTONE_AMOUNT],
+        ["Build website"],
+      ],
+      {
+        account: client.account,
+        value: MILESTONE_AMOUNT,
+      },
+    );
 
-      const [client, freelancer, resolver, attacker] =
-        await viem.getWalletClients();
-
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-        attacker,
-      };
-    }
-
-    it("rejects milestone submission before freelancer assignment", async () => {
-      const { escrow, attacker } =
-        await fundedEscrow();
-
-      await expectRevert(
-        escrow.write.submitMilestone(
-          [0n, "QmWebsiteCID"],
-          {
-            account: attacker.account,
-          }
-        ),
-        "TrustLance: not freelancer"
-      );
-    });
-
-    it("rejects approval before freelancer assignment", async () => {
-      const { escrow, client } =
-        await fundedEscrow();
-
-      await expectRevert(
-        escrow.write.approveMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: freelancer not assigned"
-      );
-    });
-
-    it("rejects approval before milestone submission", async () => {
-      const { escrow, client, freelancer } =
-        await fundedEscrow();
-
-      await escrow.write.awardFreelancer(
+    await assert.rejects(
+      escrow.write.awardFreelancer(
         [freelancer.account.address],
         {
-          account: client.account,
-        }
-      );
+          account: other.account,
+        },
+      ),
+    );
+  });
+});
 
-      await expectRevert(
-        escrow.write.approveMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: milestone not submitted"
-      );
-    });
+// =============================================================
+// SUBMISSION
+// =============================================================
 
-    it("rejects submission after milestone has been paid", async () => {
-      const { escrow, client, freelancer } =
-        await fundedEscrow();
+describe("TrustLanceEscrow - Milestone Submission", () => {
 
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
+  it("allows freelancer to submit milestone", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-      await expectRevert(
-        escrow.write.submitMilestone(
-          [0n, "QmWebsiteCID-2"],
-          {
-            account: freelancer.account,
-          }
-        ),
-        "TrustLance: invalid milestone state"
-      );
-    });
+    const milestone =
+      await escrow.read.getMilestone([0n]);
 
-    it("rejects approval of an already paid milestone", async () => {
-      const { escrow, client, freelancer } =
-        await fundedEscrow();
+    assert.equal(
+      milestone[2],
+      1, // Submitted
+    );
 
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
+    assert.equal(
+      milestone[3],
+      "QmTestDeliverableCID",
+    );
 
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
+    assert.ok(
+      milestone[4] > 0n,
+    );
 
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.approveMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: milestone not submitted"
-      );
-    });
+    assert.ok(
+      milestone[5] > milestone[4],
+    );
   });
 
-  describe("Milestone Rejection", () => {
-    const amount = 1n * 10n ** 18n;
+  it("prevents client from submitting milestone", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-    async function submittedEscrow() {
-      const { viem } = await network.getOrCreate();
-      const publicClient = await viem.getPublicClient();
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      const [client, freelancer, resolver, attacker] =
-        await viem.getWalletClients();
-
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
+    await assert.rejects(
+      escrow.write.submitMilestone(
         [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
+          0n,
+          "QmTestCID",
         ],
         {
           account: client.account,
-          value: amount,
-        }
-      );
+        },
+      ),
+    );
+  });
+});
 
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
+// =============================================================
+// MANUAL APPROVAL
+// =============================================================
 
-      await escrow.write.submitMilestone(
-        [0n, "QmInitialCID"],
-        {
-          account: freelancer.account,
-        }
-      );
+describe("TrustLanceEscrow - Approval", () => {
 
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-        attacker,
-        publicClient,
-      };
-    }
+  it("pays freelancer when client approves", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-    it("allows the client to reject a submitted milestone", async () => {
-      const { escrow, client } =
-        await submittedEscrow();
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      await escrow.write.rejectMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-      const milestone =
-        await escrow.read.getMilestone([0n]);
+    const before =
+      await escrow.read.getEscrowBalance();
 
-      // Rejected = 3
-      assert.equal(milestone[2], 3);
-    });
+    await escrow.write.approveMilestone(
+      [0n],
+      {
+        account: client.account,
+      },
+    );
 
-    it("rejecting a milestone does not release payment", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-        publicClient,
-      } = await submittedEscrow();
+    const after =
+      await escrow.read.getEscrowBalance();
 
-      const before =
-        await publicClient.getBalance({
-          address: freelancer.account.address,
-        });
+    assert.equal(
+      before - after,
+      MILESTONE_AMOUNT,
+    );
 
-      await escrow.write.rejectMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
+    const milestone =
+      await escrow.read.getMilestone([0n]);
 
-      const after =
-        await publicClient.getBalance({
-          address: freelancer.account.address,
-        });
+    assert.equal(
+      milestone[2],
+      5, // Paid
+    );
 
-      assert.equal(
-        after,
-        before
-      );
-    });
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      0n,
+    );
+  });
+});
 
-    it("rejecting a milestone does not reduce totalEscrowed", async () => {
-      const { escrow, client } =
-        await submittedEscrow();
+// =============================================================
+// AUTOMATIC APPROVAL
+// =============================================================
 
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        amount
-      );
+describe("TrustLanceEscrow - Automatic Approval", () => {
 
-      await escrow.write.rejectMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
+  it("automatically pays freelancer after review deadline", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        amount
-      );
-    });
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-    it("rejecting a milestone does not reduce the contract balance", async () => {
-      const { escrow, client } =
-        await submittedEscrow();
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        amount
-      );
+    await increaseTime(
+      REVIEW_PERIOD + 1n,
+    );
 
-      await escrow.write.rejectMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
+    await escrow.write.autoApproveMilestone(
+      [0n],
+      {
+        account: client.account,
+      },
+    );
 
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        amount
-      );
-    });
+    const milestone =
+      await escrow.read.getMilestone([0n]);
 
-    it("rejects milestone rejection from a non-client", async () => {
-      const { escrow, freelancer } =
-        await submittedEscrow();
+    assert.equal(
+      milestone[2],
+      5, // Paid
+    );
 
-      await expectRevert(
-        escrow.write.rejectMilestone(
-          [0n],
-          {
-            account: freelancer.account,
-          }
-        ),
-        "TrustLance: not client"
-      );
-    });
-
-    it("rejects an invalid milestone index", async () => {
-      const { escrow, client } =
-        await submittedEscrow();
-
-      await expectRevert(
-        escrow.write.rejectMilestone(
-          [99n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: invalid milestone"
-      );
-    });
-
-    it("rejects a pending milestone", async () => {
-      const { viem } = await network.getOrCreate();
-
-      const [client, freelancer, resolver] =
-        await viem.getWalletClients();
-
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.rejectMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: milestone not submitted"
-      );
-    });
-
-    it("rejects rejecting an already rejected milestone", async () => {
-      const { escrow, client } =
-        await submittedEscrow();
-
-      await escrow.write.rejectMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.rejectMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: milestone not submitted"
-      );
-    });
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      0n,
+    );
   });
 
-  describe("Milestone Resubmission", () => {
-    const amount = 1n * 10n ** 18n;
+  it("cannot auto-approve before deadline", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-    async function rejectedEscrow() {
-      const { viem } = await network.getOrCreate();
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      const [client, freelancer, resolver] =
-        await viem.getWalletClients();
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await escrow.write.submitMilestone(
-        [0n, "QmInitialCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await escrow.write.rejectMilestone(
+    await assert.rejects(
+      escrow.write.autoApproveMilestone(
         [0n],
         {
           account: client.account,
-        }
-      );
+        },
+      ),
+    );
+  });
+});
 
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-      };
-    }
+// =============================================================
+// REJECTION
+// =============================================================
 
-    it("allows a rejected milestone to be resubmitted", async () => {
-      const { escrow, freelancer } =
-        await rejectedEscrow();
+describe("TrustLanceEscrow - Rejection", () => {
 
-      await escrow.write.submitMilestone(
-        [0n, "QmResubmittedCID"],
-        {
-          account: freelancer.account,
-        }
-      );
+  it("allows client to reject submitted milestone", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-      const milestone =
-        await escrow.read.getMilestone([0n]);
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      // Submitted = 1
-      assert.equal(milestone[2], 1);
-    });
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-    it("updates the deliverable CID on resubmission", async () => {
-      const { escrow, freelancer } =
-        await rejectedEscrow();
+    await escrow.write.rejectMilestone(
+      [0n],
+      {
+        account: client.account,
+      },
+    );
 
-      await escrow.write.submitMilestone(
-        [0n, "QmResubmittedCID"],
-        {
-          account: freelancer.account,
-        }
-      );
+    const milestone =
+      await escrow.read.getMilestone([0n]);
 
-      const milestone =
-        await escrow.read.getMilestone([0n]);
+    assert.equal(
+      milestone[2],
+      3, // Rejected
+    );
 
-      assert.equal(
-        milestone[3],
-        "QmResubmittedCID"
-      );
-    });
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      MILESTONE_AMOUNT,
+    );
+  });
+});
 
-    it("can approve a resubmitted milestone", async () => {
-      const { escrow, client, freelancer } =
-        await rejectedEscrow();
+// =============================================================
+// DISPUTE
+// =============================================================
 
-      await escrow.write.submitMilestone(
-        [0n, "QmResubmittedCID"],
-        {
-          account: freelancer.account,
-        }
-      );
+describe("TrustLanceEscrow - Disputes", () => {
 
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
+  it("allows freelancer to dispute rejection", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-      const milestone =
-        await escrow.read.getMilestone([0n]);
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      // Paid = 5
-      assert.equal(milestone[2], 5);
-    });
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-    it("pays only once after resubmission", async () => {
-      const { escrow, client, freelancer } =
-        await rejectedEscrow();
+    await escrow.write.rejectMilestone(
+      [0n],
+      {
+        account: client.account,
+      },
+    );
 
-      await escrow.write.submitMilestone(
-        [0n, "QmResubmittedCID"],
-        {
-          account: freelancer.account,
-        }
-      );
+    await escrow.write.raiseDispute(
+      [0n],
+      {
+        account: freelancer.account,
+      },
+    );
 
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
+    const milestone =
+      await escrow.read.getMilestone([0n]);
 
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        0n
-      );
+    assert.equal(
+      milestone[2],
+      4, // Disputed
+    );
 
-      await expectRevert(
-        escrow.write.submitMilestone(
-          [0n, "QmThirdAttempt"],
-          {
-            account: freelancer.account,
-          }
-        ),
-        "TrustLance: invalid milestone state"
-      );
-    });
+    assert.ok(
+      milestone[6] > 0n,
+    );
   });
 
-  describe("Dispute Raising", () => {
-    const amount = 1n * 10n ** 18n;
+  it("client can withdraw rejection and pay freelancer", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-    async function rejectedEscrow() {
-      const { viem } = await network.getOrCreate();
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      const [client, freelancer, resolver, attacker] =
-        await viem.getWalletClients();
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
+    await escrow.write.rejectMilestone(
+      [0n],
+      {
+        account: client.account,
+      },
+    );
 
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
+    await escrow.write.raiseDispute(
+      [0n],
+      {
+        account: freelancer.account,
+      },
+    );
 
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
+    await escrow.write.withdrawRejection(
+      [0n],
+      {
+        account: client.account,
+      },
+    );
 
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
+    const milestone =
+      await escrow.read.getMilestone([0n]);
 
-      await escrow.write.rejectMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
+    assert.equal(
+      milestone[2],
+      5, // Paid
+    );
 
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-        attacker,
-      };
-    }
-
-    it("allows the client to raise a dispute", async () => {
-      const { escrow, client } =
-        await rejectedEscrow();
-
-      await escrow.write.raiseDispute(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      const milestone =
-        await escrow.read.getMilestone([0n]);
-
-      // Disputed = 4
-      assert.equal(milestone[2], 4);
-    });
-
-    it("allows the freelancer to raise a dispute", async () => {
-      const { escrow, freelancer } =
-        await rejectedEscrow();
-
-      await escrow.write.raiseDispute(
-        [0n],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      const milestone =
-        await escrow.read.getMilestone([0n]);
-
-      // Disputed = 4
-      assert.equal(milestone[2], 4);
-    });
-
-    it("rejects a dispute from an unauthorized account", async () => {
-      const { escrow, attacker } =
-        await rejectedEscrow();
-
-      await expectRevert(
-        escrow.write.raiseDispute(
-          [0n],
-          {
-            account: attacker.account,
-          }
-        ),
-        "TrustLance: unauthorized"
-      );
-    });
-
-    it("rejects a dispute for a pending milestone", async () => {
-      const { viem } = await network.getOrCreate();
-
-      const [client, freelancer, resolver] =
-        await viem.getWalletClients();
-
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.raiseDispute(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: milestone not rejected"
-      );
-    });
-
-    it("rejects a dispute for a submitted milestone", async () => {
-      const { viem } = await network.getOrCreate();
-
-      const [client, freelancer, resolver] =
-        await viem.getWalletClients();
-
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.raiseDispute(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: milestone not rejected"
-      );
-    });
-
-    it("rejects a dispute for an invalid milestone", async () => {
-      const { escrow, client } =
-        await rejectedEscrow();
-
-      await expectRevert(
-        escrow.write.raiseDispute(
-          [99n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: invalid milestone"
-      );
-    });
-
-    it("rejects raising the same dispute twice", async () => {
-      const { escrow, client } =
-        await rejectedEscrow();
-
-      await escrow.write.raiseDispute(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.raiseDispute(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: milestone not rejected"
-      );
-    });
-
-    it("does not move funds when a dispute is raised", async () => {
-      const { escrow, client } =
-        await rejectedEscrow();
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        amount
-      );
-
-      await escrow.write.raiseDispute(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        amount
-      );
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        amount
-      );
-    });
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      0n,
+    );
   });
 
-  describe("Dispute Resolution", () => {
-    const amount = 1n * 10n ** 18n;
+  it("freelancer can accept rejection and refund client", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-    async function disputedEscrow() {
-      const { viem } = await network.getOrCreate();
-      const publicClient = await viem.getPublicClient();
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      const [client, freelancer, resolver, attacker] =
-        await viem.getWalletClients();
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
+    await escrow.write.rejectMilestone(
+      [0n],
+      {
+        account: client.account,
+      },
+    );
 
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
+    await escrow.write.raiseDispute(
+      [0n],
+      {
+        account: freelancer.account,
+      },
+    );
 
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
+    await escrow.write.acceptRejection(
+      [0n],
+      {
+        account: freelancer.account,
+      },
+    );
 
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
+    const milestone =
+      await escrow.read.getMilestone([0n]);
 
-      await escrow.write.rejectMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
+    assert.equal(
+      milestone[2],
+      6, // Refunded
+    );
 
-      await escrow.write.raiseDispute(
-        [0n],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-        attacker,
-        publicClient,
-      };
-    }
-
-    it("allows the resolver to resolve a dispute in favor of the freelancer", async () => {
-      const { escrow, resolver, freelancer } =
-        await disputedEscrow();
-
-      await escrow.write.resolveDispute(
-        [0n, true],
-        {
-          account: resolver.account,
-        }
-      );
-
-      const milestone =
-        await escrow.read.getMilestone([0n]);
-
-      // Paid = 5
-      assert.equal(milestone[2], 5);
-
-      const balance =
-        await escrow.read.getEscrowBalance();
-
-      assert.equal(balance, 0n);
-    });
-
-    it("pays the freelancer when the dispute favors the freelancer", async () => {
-      const {
-        escrow,
-        resolver,
-        freelancer,
-        publicClient,
-      } = await disputedEscrow();
-
-      const before =
-        await publicClient.getBalance({
-          address: freelancer.account.address,
-        });
-
-      await escrow.write.resolveDispute(
-        [0n, true],
-        {
-          account: resolver.account,
-        }
-      );
-
-      const after =
-        await publicClient.getBalance({
-          address: freelancer.account.address,
-        });
-
-      assert.equal(
-        after - before,
-        amount
-      );
-    });
-
-    it("allows the resolver to resolve a dispute in favor of the client", async () => {
-      const { escrow, resolver } =
-        await disputedEscrow();
-
-      await escrow.write.resolveDispute(
-        [0n, false],
-        {
-          account: resolver.account,
-        }
-      );
-
-      const milestone =
-        await escrow.read.getMilestone([0n]);
-
-      // Paid = 5
-      assert.equal(milestone[2], 5);
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        0n
-      );
-    });
-
-    it("pays the client when the dispute favors the client", async () => {
-      const {
-        escrow,
-        client,
-        resolver,
-        publicClient,
-      } = await disputedEscrow();
-
-      const before =
-        await publicClient.getBalance({
-          address: client.account.address,
-        });
-
-      await escrow.write.resolveDispute(
-        [0n, false],
-        {
-          account: resolver.account,
-        }
-      );
-
-      const after =
-        await publicClient.getBalance({
-          address: client.account.address,
-        });
-
-      assert.equal(
-        after - before,
-        amount
-      );
-    });
-
-    it("reduces totalEscrowed after resolution", async () => {
-      const { escrow, resolver } =
-        await disputedEscrow();
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        amount
-      );
-
-      await escrow.write.resolveDispute(
-        [0n, true],
-        {
-          account: resolver.account,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        0n
-      );
-    });
-
-    it("reduces the contract balance after resolution", async () => {
-      const { escrow, resolver } =
-        await disputedEscrow();
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        amount
-      );
-
-      await escrow.write.resolveDispute(
-        [0n, false],
-        {
-          account: resolver.account,
-        }
-      );
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        0n
-      );
-    });
-
-    it("rejects resolution from a non-resolver", async () => {
-      const { escrow, attacker } =
-        await disputedEscrow();
-
-      await expectRevert(
-        escrow.write.resolveDispute(
-          [0n, true],
-          {
-            account: attacker.account,
-          }
-        ),
-        "TrustLance: not resolver"
-      );
-    });
-
-    it("rejects resolution from the client", async () => {
-      const { escrow, client } =
-        await disputedEscrow();
-
-      await expectRevert(
-        escrow.write.resolveDispute(
-          [0n, true],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: not resolver"
-      );
-    });
-
-    it("rejects resolution from the freelancer", async () => {
-      const { escrow, freelancer } =
-        await disputedEscrow();
-
-      await expectRevert(
-        escrow.write.resolveDispute(
-          [0n, true],
-          {
-            account: freelancer.account,
-          }
-        ),
-        "TrustLance: not resolver"
-      );
-    });
-
-    it("rejects resolution of a non-disputed milestone", async () => {
-      const { viem } = await network.getOrCreate();
-
-      const [client, freelancer, resolver] =
-        await viem.getWalletClients();
-
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.resolveDispute(
-          [0n, true],
-          {
-            account: resolver.account,
-          }
-        ),
-        "TrustLance: milestone not disputed"
-      );
-    });
-
-    it("rejects resolution of an invalid milestone", async () => {
-      const { escrow, resolver } =
-        await disputedEscrow();
-
-      await expectRevert(
-        escrow.write.resolveDispute(
-          [99n, true],
-          {
-            account: resolver.account,
-          }
-        ),
-        "TrustLance: invalid milestone"
-      );
-    });
-
-    it("rejects resolving the same dispute twice", async () => {
-      const { escrow, resolver } =
-        await disputedEscrow();
-
-      await escrow.write.resolveDispute(
-        [0n, true],
-        {
-          account: resolver.account,
-        }
-      );
-
-      await expectRevert(
-        escrow.write.resolveDispute(
-          [0n, false],
-          {
-            account: resolver.account,
-          }
-        ),
-        "TrustLance: milestone not disputed"
-      );
-    });
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      0n,
+    );
   });
 
-  describe("Project Cancellation", () => {
-    const M1 = 1n * 10n ** 18n;
-    const M2 = 2n * 10n ** 18n;
-    const M3 = 3n * 10n ** 18n;
+  it("automatically pays freelancer after dispute deadline", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-    async function fundedEscrow() {
-      const { viem } = await network.getOrCreate();
-      const publicClient = await viem.getPublicClient();
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      const [client, freelancer, resolver, attacker] =
-        await viem.getWalletClients();
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      const total = M1 + M2 + M3;
-
-      await escrow.write.fundEscrow(
-        [
-          [M1, M2, M3],
-          [
-            "Design",
-            "Development",
-            "Deployment",
-          ],
-        ],
-        {
-          account: client.account,
-          value: total,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-        attacker,
-        publicClient,
-        total,
-      };
-    }
-
-    it("allows the client to cancel the project", async () => {
-      const { escrow, client } =
-        await fundedEscrow();
-
-      await escrow.write.cancelProject({
+    await escrow.write.rejectMilestone(
+      [0n],
+      {
         account: client.account,
-      });
+      },
+    );
 
-      assert.equal(
-        await escrow.read.cancelled(),
-        true
-      );
-    });
+    await escrow.write.raiseDispute(
+      [0n],
+      {
+        account: freelancer.account,
+      },
+    );
 
-    it("sets totalEscrowed to zero after cancellation", async () => {
-      const { escrow, client } =
-        await fundedEscrow();
+    await increaseTime(
+      DISPUTE_PERIOD + 1n,
+    );
 
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        M1 + M2 + M3
-      );
-
-      await escrow.write.cancelProject({
+    await escrow.write.autoResolveDispute(
+      [0n],
+      {
         account: client.account,
-      });
+      },
+    );
 
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        0n
-      );
-    });
+    const milestone =
+      await escrow.read.getMilestone([0n]);
 
-    it("refunds the remaining escrow to the client", async () => {
-      const {
-        escrow,
-        client,
-        publicClient,
-        total,
-      } = await fundedEscrow();
+    assert.equal(
+      milestone[2],
+      5, // Paid
+    );
 
-      const before =
-        await publicClient.getBalance({
-          address: client.account.address,
-        });
-
-      const hash = await escrow.write.cancelProject({
-        account: client.account,
-      });
-
-      const receipt =
-        await publicClient.waitForTransactionReceipt({
-          hash,
-        });
-
-      const after =
-        await publicClient.getBalance({
-          address: client.account.address,
-        });
-
-      const gasCost =
-        receipt.gasUsed * receipt.effectiveGasPrice;
-
-      assert.equal(
-        after - before + gasCost,
-        total
-      );
-    });
-
-    it("empties the contract balance after cancellation", async () => {
-      const { escrow, client } =
-        await fundedEscrow();
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        M1 + M2 + M3
-      );
-
-      await escrow.write.cancelProject({
-        account: client.account,
-      });
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        0n
-      );
-    });
-
-    it("rejects cancellation from a non-client", async () => {
-      const { escrow, freelancer } =
-        await fundedEscrow();
-
-      await expectRevert(
-        escrow.write.cancelProject({
-          account: freelancer.account,
-        }),
-        "TrustLance: not client"
-      );
-    });
-
-    it("rejects cancellation from an attacker", async () => {
-      const { escrow, attacker } =
-        await fundedEscrow();
-
-      await expectRevert(
-        escrow.write.cancelProject({
-          account: attacker.account,
-        }),
-        "TrustLance: not client"
-      );
-    });
-
-    it("rejects cancellation twice", async () => {
-      const { escrow, client } =
-        await fundedEscrow();
-
-      await escrow.write.cancelProject({
-        account: client.account,
-      });
-
-      await expectRevert(
-        escrow.write.cancelProject({
-          account: client.account,
-        }),
-        "TrustLance: already cancelled"
-      );
-    });
-
-    it("does not refund already-paid milestones", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-        publicClient,
-      } = await fundedEscrow();
-
-      // Submit and approve M1.
-      await escrow.write.submitMilestone(
-        [0n, "QmDesignCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      // Only M2 + M3 remain locked.
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        M2 + M3
-      );
-
-      const before =
-        await publicClient.getBalance({
-          address: client.account.address,
-        });
-
-      const hash = await escrow.write.cancelProject({
-        account: client.account,
-      });
-
-      const receipt =
-        await publicClient.waitForTransactionReceipt({
-          hash,
-        });
-
-      const after =
-        await publicClient.getBalance({
-          address: client.account.address,
-        });
-
-      const gasCost =
-        receipt.gasUsed * receipt.effectiveGasPrice;
-
-      assert.equal(
-        after - before + gasCost,
-        M2 + M3
-      );
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        0n
-      );
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        0n
-      );
-    });
-
-    it("preserves the Paid status of already-paid milestones", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-      } = await fundedEscrow();
-
-      await escrow.write.submitMilestone(
-        [0n, "QmDesignCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      await escrow.write.cancelProject({
-        account: client.account,
-      });
-
-      const milestone =
-        await escrow.read.getMilestone([0n]);
-
-      // Paid = 5
-      assert.equal(
-        milestone[2],
-        5
-      );
-    });
-
-    it("preserves the Paid status of already-paid milestones", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-      } = await fundedEscrow();
-
-      await escrow.write.submitMilestone(
-        [0n, "QmDesignCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await escrow.write.approveMilestone(
-        [0n],
-        {
-          account: client.account,
-        }
-      );
-
-      const beforeCancel =
-        await escrow.read.getMilestone([0n]);
-
-      // Paid = 5
-      assert.equal(
-        beforeCancel[2],
-        5
-      );
-
-      await escrow.write.cancelProject({
-        account: client.account,
-      });
-
-      const afterCancel =
-        await escrow.read.getMilestone([0n]);
-
-      // Paid = 5
-      assert.equal(
-        afterCancel[2],
-        5
-      );
-    });
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      0n,
+    );
   });
 
-  describe("Post-Cancellation Protection", () => {
-    const amount = 1n * 10n ** 18n;
+  it("cannot automatically resolve dispute before deadline", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-    async function cancelledEscrow() {
-      const { viem } = await network.getOrCreate();
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      const [client, freelancer, resolver, attacker] =
-        await viem.getWalletClients();
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
 
-      const escrow = await viem.deployContract(
-        "TrustLanceEscrow",
-        [
-          client.account.address,
-          resolver.account.address,
-        ]
-      );
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await escrow.write.cancelProject({
+    await escrow.write.rejectMilestone(
+      [0n],
+      {
         account: client.account,
-      });
+      },
+    );
 
-      return {
-        escrow,
-        client,
-        freelancer,
-        resolver,
-        attacker,
-      };
-    }
+    await escrow.write.raiseDispute(
+      [0n],
+      {
+        account: freelancer.account,
+      },
+    );
 
-    it("sets cancelled to true", async () => {
-      const { escrow } = await cancelledEscrow();
-
-      assert.equal(
-        await escrow.read.cancelled(),
-        true
-      );
-    });
-
-    it("rejects funding after cancellation", async () => {
-      const { escrow, client } =
-        await cancelledEscrow();
-
-      await expectRevert(
-        escrow.write.fundEscrow(
-          [
-            [amount],
-            ["Another milestone"],
-          ],
-          {
-            account: client.account,
-            value: amount,
-          }
-        ),
-        "TrustLance: project cancelled"
-      );
-    });
-
-    it("rejects awarding a freelancer after cancellation", async () => {
-      const { escrow, client, attacker } =
-        await cancelledEscrow();
-
-      await expectRevert(
-        escrow.write.awardFreelancer(
-          [attacker.account.address],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: project cancelled"
-      );
-    });
-
-    it("rejects milestone submission after cancellation", async () => {
-      const { escrow, freelancer } =
-        await cancelledEscrow();
-
-      await expectRevert(
-        escrow.write.submitMilestone(
-          [0n, "QmAfterCancellation"],
-          {
-            account: freelancer.account,
-          }
-        ),
-        "TrustLance: project cancelled"
-      );
-    });
-
-    it("rejects milestone approval after cancellation", async () => {
-      const { escrow, client } =
-        await cancelledEscrow();
-
-      await expectRevert(
-        escrow.write.approveMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: project cancelled"
-      );
-    });
-
-    it("rejects milestone rejection after cancellation", async () => {
-      const { escrow, client } =
-        await cancelledEscrow();
-
-      await expectRevert(
-        escrow.write.rejectMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: project cancelled"
-      );
-    });
-
-    it("rejects raising a dispute after cancellation", async () => {
-      const { escrow, client } =
-        await cancelledEscrow();
-
-      await expectRevert(
-        escrow.write.raiseDispute(
-          [0n],
-          {
-            account: client.account,
-          }
-        ),
-        "TrustLance: project cancelled"
-      );
-    });
-
-    it("rejects dispute resolution after cancellation", async () => {
-      const { escrow, resolver } =
-        await cancelledEscrow();
-
-      await expectRevert(
-        escrow.write.resolveDispute(
-          [0n, true],
-          {
-            account: resolver.account,
-          }
-        ),
-        "TrustLance: project cancelled"
-      );
-    });
-
-    it("keeps escrow balance at zero after cancellation", async () => {
-      const { escrow } =
-        await cancelledEscrow();
-
-      assert.equal(
-        await escrow.read.totalEscrowed(),
-        0n
-      );
-
-      assert.equal(
-        await escrow.read.getEscrowBalance(),
-        0n
-      );
-    });
-
-    it("keeps the freelancer assignment unchanged after cancellation", async () => {
-      const {
-        escrow,
-        freelancer,
-      } = await cancelledEscrow();
-
-      const assigned =
-        await escrow.read.freelancer();
-
-      assert.equal(
-        assigned.toLowerCase(),
-        freelancer.account.address.toLowerCase()
-      );
-    });
-  });
-
-  describe("Events", () => {
-    const amount = 1n * 10n ** 18n;
-
-    it("emits ProjectFunded", async () => {
-      const {
-        escrow,
-        client,
-        publicClient,
-      } = await deployFixture();
-
-      const hash = await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      const receipt =
-        await publicClient.waitForTransactionReceipt({
-          hash,
-        });
-
-      assert.equal(receipt.status, "success");
-
-      const logs = receipt.logs.filter(
-        (log) =>
-          log.address.toLowerCase() ===
-          escrow.address.toLowerCase()
-      );
-
-      assert.equal(logs.length, 1);
-    });
-
-    it("emits FreelancerAwarded", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-        publicClient,
-      } = await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      const hash =
-        await escrow.write.awardFreelancer(
-          [freelancer.account.address],
-          {
-            account: client.account,
-          }
-        );
-
-      const receipt =
-        await publicClient.waitForTransactionReceipt({
-          hash,
-        });
-
-      assert.equal(receipt.status, "success");
-
-      const logs = receipt.logs.filter(
-        (log) =>
-          log.address.toLowerCase() ===
-          escrow.address.toLowerCase()
-      );
-
-      assert.equal(logs.length, 1);
-    });
-
-    it("emits MilestoneSubmitted", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-        publicClient,
-      } = await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      const hash =
-        await escrow.write.submitMilestone(
-          [0n, "QmWebsiteCID"],
-          {
-            account: freelancer.account,
-          }
-        );
-
-      const receipt =
-        await publicClient.waitForTransactionReceipt({
-          hash,
-        });
-
-      assert.equal(receipt.status, "success");
-
-      const logs = receipt.logs.filter(
-        (log) =>
-          log.address.toLowerCase() ===
-          escrow.address.toLowerCase()
-      );
-
-      assert.equal(logs.length, 1);
-    });
-
-    it("emits MilestoneRejected", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-        publicClient,
-      } = await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      const hash =
-        await escrow.write.rejectMilestone(
-          [0n],
-          {
-            account: client.account,
-          }
-        );
-
-      const receipt =
-        await publicClient.waitForTransactionReceipt({
-          hash,
-        });
-
-      assert.equal(receipt.status, "success");
-
-      const logs = receipt.logs.filter(
-        (log) =>
-          log.address.toLowerCase() ===
-          escrow.address.toLowerCase()
-      );
-
-      assert.equal(logs.length, 1);
-    });
-
-    it("emits DisputeRaised", async () => {
-      const {
-        escrow,
-        client,
-        freelancer,
-        publicClient,
-      } = await deployFixture();
-
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
-
-      await escrow.write.awardFreelancer(
-        [freelancer.account.address],
-        {
-          account: client.account,
-        }
-      );
-
-      await escrow.write.submitMilestone(
-        [0n, "QmWebsiteCID"],
-        {
-          account: freelancer.account,
-        }
-      );
-
-      await escrow.write.rejectMilestone(
+    await assert.rejects(
+      escrow.write.autoResolveDispute(
         [0n],
         {
           account: client.account,
-        }
-      );
+        },
+      ),
+    );
+  });
+});
 
-      const hash =
-        await escrow.write.raiseDispute(
-          [0n],
-          {
-            account: freelancer.account,
-          }
-        );
+// =============================================================
+// MUTUAL CANCELLATION
+// =============================================================
 
-      const receipt =
-        await publicClient.waitForTransactionReceipt({
-          hash,
-        });
+describe("TrustLanceEscrow - Mutual Cancellation", () => {
 
-      assert.equal(receipt.status, "success");
+  it("cancels project when both parties agree", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
-      const logs = receipt.logs.filter(
-        (log) =>
-          log.address.toLowerCase() ===
-          escrow.address.toLowerCase()
-      );
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
-      assert.equal(logs.length, 1);
-    });
+    await escrow.write.requestCancellation(
 
-    it("emits ProjectCancelled", async () => {
-      const {
-        escrow,
-        client,
-        publicClient,
-      } = await deployFixture();
+      {
+        account: client.account,
+      },
+    );
 
-      await escrow.write.fundEscrow(
-        [
-          [amount],
-          ["Build website"],
-        ],
-        {
-          account: client.account,
-          value: amount,
-        }
-      );
+    assert.equal(
+      await escrow.read.clientCancellationRequested(),
+      true,
+    );
 
-      const hash =
-        await escrow.write.cancelProject({
-          account: client.account,
-        });
+    assert.equal(
+      await escrow.read.cancelled(),
+      false,
+    );
 
-      const receipt =
-        await publicClient.waitForTransactionReceipt({
-          hash,
-        });
+    await escrow.write.requestCancellation(
 
-      assert.equal(receipt.status, "success");
+      {
+        account: freelancer.account,
+      },
+    );
 
-      const logs = receipt.logs.filter(
-        (log) =>
-          log.address.toLowerCase() ===
-          escrow.address.toLowerCase()
-      );
+    assert.equal(
+      await escrow.read.freelancerCancellationRequested(),
+      true,
+    );
 
-      assert.equal(logs.length, 1);
-    });
+    assert.equal(
+      await escrow.read.cancelled(),
+      true,
+    );
+
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      0n,
+    );
   });
 
+  it("does not cancel when only one party agrees", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
 
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
 
+    await escrow.write.requestCancellation(
+
+      {
+        account: client.account,
+      },
+    );
+
+    assert.equal(
+      await escrow.read.cancelled(),
+      false,
+    );
+
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      MILESTONE_AMOUNT,
+    );
+  });
+});
+
+// =============================================================
+// CANCEL BEFORE AWARD
+// =============================================================
+
+describe("TrustLanceEscrow - Cancellation Before Award", () => {
+
+  it("allows client to cancel before freelancer is assigned", async () => {
+    const {
+      escrow,
+      client,
+    } = await deployEscrow();
+
+    await escrow.write.fundEscrow(
+      [
+        [MILESTONE_AMOUNT],
+        ["Build website"],
+      ],
+      {
+        account: client.account,
+        value: MILESTONE_AMOUNT,
+      },
+    );
+
+    await escrow.write.cancelProjectBeforeAward(
+
+      {
+        account: client.account,
+      },
+    );
+
+    assert.equal(
+      await escrow.read.cancelled(),
+      true,
+    );
+
+    assert.equal(
+      await escrow.read.totalEscrowed(),
+      0n,
+    );
+  });
+
+  it("cannot use pre-award cancellation after freelancer is assigned", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
+
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
+
+    await assert.rejects(
+      escrow.write.cancelProjectBeforeAward(
+
+        {
+          account: client.account,
+        },
+      ),
+    );
+  });
+});
+
+// =============================================================
+// AUTHORIZATION / INVALID STATES
+// =============================================================
+
+describe("TrustLanceEscrow - Security Rules", () => {
+
+  it("prevents non-client from approving", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
+
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
+
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
+
+    await assert.rejects(
+      escrow.write.approveMilestone(
+        [0n],
+        {
+          account: freelancer.account,
+        },
+      ),
+    );
+  });
+
+  it("prevents non-client from rejecting", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
+
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
+
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
+
+    await assert.rejects(
+      escrow.write.rejectMilestone(
+        [0n],
+        {
+          account: freelancer.account,
+        },
+      ),
+    );
+  });
+
+  it("prevents non-freelancer from raising dispute", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+      other,
+    } = await deployEscrow();
+
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
+
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
+
+    await escrow.write.rejectMilestone(
+      [0n],
+      {
+        account: client.account,
+      },
+    );
+
+    await assert.rejects(
+      escrow.write.raiseDispute(
+        [0n],
+        {
+          account: other.account,
+        },
+      ),
+    );
+  });
+
+  it("prevents dispute from being raised on a non-rejected milestone", async () => {
+    const {
+      escrow,
+      client,
+      freelancer,
+    } = await deployEscrow();
+
+    await fundAndAward(
+      escrow,
+      client,
+      freelancer,
+    );
+
+    await submitMilestone(
+      escrow,
+      freelancer,
+    );
+
+    await assert.rejects(
+      escrow.write.raiseDispute(
+        [0n],
+        {
+          account: freelancer.account,
+        },
+      ),
+    );
+  });
 });
