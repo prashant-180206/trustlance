@@ -15,7 +15,7 @@ interface AuthContextValue {
     session: Session | null;
     user: User | null;
     loading: boolean;
-    signIn: () => Promise<void>;
+    signIn: (accountType: "freelancer" | "company") => Promise<void>;
     signOut: () => Promise<void>;
 }
 
@@ -61,8 +61,8 @@ export function AuthProvider({
         };
     }, []);
 
-    const signIn = async () => {
-        await authService.signInWithWallet();
+    const signIn = async (accountType: "freelancer" | "company") => {
+        await authService.signInWithWallet(accountType);
     };
 
     const signOut = async () => {

@@ -11,7 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
-import { Route as ProfileIndexRouteImport } from './routes/profile/index'
+import { Route as CompanyProfileRouteImport } from './routes/company-profile'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as FreelancerProfileRouteImport } from './routes/freelancer-profile'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as DisputesIndexRouteImport } from './routes/disputes/index'
+import { Route as EscrowIndexRouteImport } from './routes/escrow/index'
+import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
+import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
+import { Route as ProjectsNewRouteImport } from './routes/projects/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,40 +32,158 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProfileIndexRoute = ProfileIndexRouteImport.update({
-  id: '/profile/',
-  path: '/profile/',
+const CompanyProfileRoute = CompanyProfileRouteImport.update({
+  id: '/company-profile',
+  path: '/company-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FreelancerProfileRoute = FreelancerProfileRouteImport.update({
+  id: '/freelancer-profile',
+  path: '/freelancer-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisputesIndexRoute = DisputesIndexRouteImport.update({
+  id: '/disputes/',
+  path: '/disputes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EscrowIndexRoute = EscrowIndexRouteImport.update({
+  id: '/escrow/',
+  path: '/escrow/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsNewRoute = ProjectsNewRouteImport.update({
+  id: '/projects/new',
+  path: '/projects/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/profile/': typeof ProfileIndexRoute
+  '/company-profile': typeof CompanyProfileRoute
+  '/dashboard': typeof DashboardRoute
+  '/freelancer-profile': typeof FreelancerProfileRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/projects/new': typeof ProjectsNewRoute
+  '/disputes/': typeof DisputesIndexRoute
+  '/escrow/': typeof EscrowIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/profile': typeof ProfileIndexRoute
+  '/company-profile': typeof CompanyProfileRoute
+  '/dashboard': typeof DashboardRoute
+  '/freelancer-profile': typeof FreelancerProfileRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/projects/new': typeof ProjectsNewRoute
+  '/disputes': typeof DisputesIndexRoute
+  '/escrow': typeof EscrowIndexRoute
+  '/projects': typeof ProjectsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/profile/': typeof ProfileIndexRoute
+  '/company-profile': typeof CompanyProfileRoute
+  '/dashboard': typeof DashboardRoute
+  '/freelancer-profile': typeof FreelancerProfileRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/projects/new': typeof ProjectsNewRoute
+  '/disputes/': typeof DisputesIndexRoute
+  '/escrow/': typeof EscrowIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/profile/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/company-profile'
+    | '/dashboard'
+    | '/freelancer-profile'
+    | '/login'
+    | '/signup'
+    | '/projects/$projectId'
+    | '/projects/new'
+    | '/disputes/'
+    | '/escrow/'
+    | '/projects/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/profile'
-  id: '__root__' | '/' | '/about' | '/profile/'
+  to:
+    | '/'
+    | '/about'
+    | '/company-profile'
+    | '/dashboard'
+    | '/freelancer-profile'
+    | '/login'
+    | '/signup'
+    | '/projects/$projectId'
+    | '/projects/new'
+    | '/disputes'
+    | '/escrow'
+    | '/projects'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/company-profile'
+    | '/dashboard'
+    | '/freelancer-profile'
+    | '/login'
+    | '/signup'
+    | '/projects/$projectId'
+    | '/projects/new'
+    | '/disputes/'
+    | '/escrow/'
+    | '/projects/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  ProfileIndexRoute: typeof ProfileIndexRoute
+  CompanyProfileRoute: typeof CompanyProfileRoute
+  DashboardRoute: typeof DashboardRoute
+  FreelancerProfileRoute: typeof FreelancerProfileRoute
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
+  ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
+  ProjectsNewRoute: typeof ProjectsNewRoute
+  DisputesIndexRoute: typeof DisputesIndexRoute
+  EscrowIndexRoute: typeof EscrowIndexRoute
+  ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,11 +202,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/profile/': {
-      id: '/profile/'
-      path: '/profile'
-      fullPath: '/profile/'
-      preLoaderRoute: typeof ProfileIndexRouteImport
+    '/company-profile': {
+      id: '/company-profile'
+      path: '/company-profile'
+      fullPath: '/company-profile'
+      preLoaderRoute: typeof CompanyProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/freelancer-profile': {
+      id: '/freelancer-profile'
+      path: '/freelancer-profile'
+      fullPath: '/freelancer-profile'
+      preLoaderRoute: typeof FreelancerProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/disputes/': {
+      id: '/disputes/'
+      path: '/disputes'
+      fullPath: '/disputes/'
+      preLoaderRoute: typeof DisputesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/escrow/': {
+      id: '/escrow/'
+      path: '/escrow'
+      fullPath: '/escrow/'
+      preLoaderRoute: typeof EscrowIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/': {
+      id: '/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/$projectId': {
+      id: '/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/new': {
+      id: '/projects/new'
+      path: '/projects/new'
+      fullPath: '/projects/new'
+      preLoaderRoute: typeof ProjectsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -88,7 +278,16 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  ProfileIndexRoute: ProfileIndexRoute,
+  CompanyProfileRoute: CompanyProfileRoute,
+  DashboardRoute: DashboardRoute,
+  FreelancerProfileRoute: FreelancerProfileRoute,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
+  ProjectsProjectIdRoute: ProjectsProjectIdRoute,
+  ProjectsNewRoute: ProjectsNewRoute,
+  DisputesIndexRoute: DisputesIndexRoute,
+  EscrowIndexRoute: EscrowIndexRoute,
+  ProjectsIndexRoute: ProjectsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

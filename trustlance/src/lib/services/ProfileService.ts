@@ -1,135 +1,71 @@
 import { supabase } from "../supabase/client";
-import type { Database } from "../supabase/types";
+import type { Database, Tables } from "../supabase/types";
 
-type FreelancerProfileUpdate =
-    Database["public"]["Tables"]["freelancer_profiles"]["Update"];
-
-type CompanyProfileUpdate =
-    Database["public"]["Tables"]["company_profiles"]["Update"];
-
-type ProfileUpdate =
-    Database["public"]["Tables"]["profiles"]["Update"];
+type Profile = Tables<"profiles">;
+type FreelancerProfile = Tables<"freelancer_profiles">;
+type CompanyProfile = Tables<"company_profiles">;
 
 export class ProfileService {
-    private async getAuthenticatedUser() {
-        const {
-            data: { user },
-            error,
-        } = await supabase.auth.getUser();
+  async getProfile(): Promise<Profile> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
 
-        if (error) {
-            throw error;
-        }
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
 
-        if (!user) {
-            throw new Error("User is not authenticated");
-        }
+    if (error) throw error;
+    return data;
+  }
 
-        return user;
-    }
+  async getFreelancerProfile(profileId: string): Promise<FreelancerProfile> {
+    const { data, error } = await supabase
+      .from("freelancer_profiles")
+      .select("*")
+      .eq("profile_id", profileId)
+      .single();
 
-    async getProfile() {
-        const user = await this.getAuthenticatedUser();
+    if (error) throw error;
+    return data;
+  }
 
-        const { data, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single();
+  async updateFreelancerProfile(profileId: string, updates: Partial<FreelancerProfile>): Promise<FreelancerProfile> {
+    const { data, error } = await supabase
+      .from("freelancer_profiles")
+      .upsert({ profile_id: profileId, ...updates })
+      .select()
+      .single();
 
-        if (error) {
-            throw error;
-        }
+    if (error) throw error;
+    return data;
+  }
 
-        return data;
-    }
+  async getCompanyProfile(profileId: string): Promise<CompanyProfile> {
+    const { data, error } = await supabase
+      .from("company_profiles")
+      .select("*")
+      .eq("profile_id", profileId)
+      .single();
 
-    async getFreelancerProfile() {
-        const user = await this.getAuthenticatedUser();
+    if (error) throw error;
+    return data;
+  }
 
-        const { data, error } = await supabase
-            .from("freelancer_profiles")
-            .select("*")
-            .eq("profile_id", user.id)
-            .single();
+  async updateCompanyProfile(
+    profileId: string,
+    updates: Pick<CompanyProfile, "company_name"> & Partial<Omit<CompanyProfile, "company_name" >>,
+  ): Promise<CompanyProfile> {
+    const { data, error } = await supabase
+      .from("company_profiles")
+      .upsert({ profile_id: profileId, ...updates })
+      .select()
+      .single();
 
-        if (error) {
-            throw error;
-        }
-
-        return data;
-    }
-
-    async getCompanyProfile() {
-        const user = await this.getAuthenticatedUser();
-
-        const { data, error } = await supabase
-            .from("company_profiles")
-            .select("*")
-            .eq("profile_id", user.id)
-            .single();
-
-        if (error) {
-            throw error;
-        }
-
-        return data;
-    }
-
-    async updateProfile(input: ProfileUpdate) {
-        const user = await this.getAuthenticatedUser();
-
-        const { data, error } = await supabase
-            .from("profiles")
-            .update(input)
-            .eq("id", user.id)
-            .select()
-            .single();
-
-        if (error) {
-            throw error;
-        }
-
-        return data;
-    }
-
-    async updateFreelancerProfile(
-        input: FreelancerProfileUpdate,
-    ) {
-        const user = await this.getAuthenticatedUser();
-
-        const { data, error } = await supabase
-            .from("freelancer_profiles")
-            .update(input)
-            .eq("profile_id", user.id)
-            .select()
-            .single();
-
-        if (error) {
-            throw error;
-        }
-
-        return data;
-    }
-
-    async updateCompanyProfile(
-        input: CompanyProfileUpdate,
-    ) {
-        const user = await this.getAuthenticatedUser();
-
-        const { data, error } = await supabase
-            .from("company_profiles")
-            .update(input)
-            .eq("profile_id", user.id)
-            .select()
-            .single();
-
-        if (error) {
-            throw error;
-        }
-
-        return data;
-    }
+    if (error) throw error;
+    return data;
+  }
 }
 
 export const profileService = new ProfileService();

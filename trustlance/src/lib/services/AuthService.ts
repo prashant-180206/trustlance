@@ -3,7 +3,7 @@
 import { supabase } from "../supabase/client";
 
 export class AuthService {
-    async signInWithWallet() {
+    async signInWithWallet(accountType: "freelancer" | "company") {
         const { data, error } = await supabase.auth.signInWithWeb3({
             chain: "ethereum",
             statement:
@@ -14,7 +14,34 @@ export class AuthService {
             throw error;
         }
 
-        console.log("Sign-in data:", data);
+        const user = data.user;
+
+        if (!user) {
+            throw new Error("Wallet authentication succeeded but no user was returned.");
+        }
+
+        const walletAddress = data.user.user_metadata?.custom_claims?.address;
+
+        if (!walletAddress) {
+            throw new Error("Wallet address not found.");
+        }
+
+        const { error: profileError } = await supabase
+            .from("profiles")
+            .upsert(
+                {
+                    id: user.id,
+                    wallet_address: walletAddress,
+                    account_type: accountType,
+                },
+                {
+                    onConflict: "id",
+                }
+            );
+
+        if (profileError) {
+            throw profileError;
+        }
 
         return data;
     }

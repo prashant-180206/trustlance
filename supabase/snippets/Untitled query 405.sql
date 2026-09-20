@@ -1,22 +1,5 @@
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.profiles (
-    id
-  )
-  values (
-    new.id
-  );
+-- Grant usage on public schema and all tables to postgres
+grant usage on schema public to postgres, anon, authenticated, service_role;
+grant all privileges on all tables in schema public to postgres, anon, authenticated, service_role;
 
-  return new;
-end;
-$$;
-
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row
-  execute procedure public.handle_new_user();
+delete from auth.users;

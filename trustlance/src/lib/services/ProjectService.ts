@@ -1,43 +1,124 @@
-import { supabase } from '@/lib/supabaseClient';
-import type { Project, Milestone } from '@/types/domain';
+import { supabase } from "../supabase/client";
+import type { Tables } from "../supabase/types";
+
+type Project = Tables<"projects">;
+type Application = Tables<"applications">;
 
 export class ProjectService {
-    static async list(filters: { category?: string; skills?: string[] }): Promise<Project[]> {
-        let query = supabase.from('projects').select('*').eq('status', 'open');
-        if (filters.category) query = query.eq('category', filters.category);
-        if (filters.skills?.length) query = query.contains('skills', filters.skills);
-        const { data, error } = await query;
-        if (error) throw error;
-        return data as Project[];
-    }
+  async createProject(companyId: string, projectData: {
+    title: string;
+    description: string;
+    budget: number;
+    deadline?: string;
+  }): Promise<Project> {
+    const { data, error } = await supabase
+      .from("projects")
+      .insert({
+        company_id: companyId,
+        ...projectData,
+        status: "open",
+      })
+      .select()
+      .single();
 
-    static async getById(projectId: string): Promise<Project> {
-        const { data, error } = await supabase
-            .from('projects')
-            .select('*, milestones(*)')
-            .eq('id', projectId)
-            .single();
-        if (error) throw error;
-        return data as Project;
-    }
+    if (error) throw error;
+    return data;
+  }
 
-    static async create(input: Omit<Project, 'id' | 'status' | 'contractAddress' | 'awardedFreelancerId'>,
-        milestones: Omit<Milestone, 'id' | 'projectId' | 'status' | 'deliverableCid'>[]): Promise<Project> {
-    // 1) insert project row (status: 'draft')
-    // 2) bulk-insert milestone rows
-    // returns the created project; escrow deployment happens separately in fund()
-    // ...
-    }
+  async getAllProjects(): Promise<Project[]> {
+    const { data, error } = await supabase
+      .from("projects")
+      .select("*, company_profiles(company_name)")
+      .eq("status", "open")
+      .order("created_at", { ascending: false });
 
-    static async fund(projectId: string, signer: /* viem WalletClient */ unknown): Promise<string> {
-    // 1) deploy TrustLanceEscrow via factory contract (client-signed tx)
-    // 2) update projects.contract_address + status='open' optimistically
-    // 3) actual authoritative status flip happens via index-chain-events on ProjectFunded event
-    // ...
-    }
+    if (error) throw error;
+    return data || [];
+  }
 
-    static async awardFreelancer(projectId: string, freelancerId: string, signer: unknown): Promise<string> {
-    // calls escrow.awardFreelancer(address) on-chain, then updates awarded_freelancer_id
-    // ...
-    }
+  async getProjectById(projectId: string): Promise<Project> {
+    const { data, error } = await supabase
+      .from("projects")
+      .select("*, company_profiles(company_name)")
+      .eq("id", projectId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async getCompanyProjects(companyId: string): Promise<Project[]> {
+    const { data, error } = await supabase
+      .from("projects")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getFreelancerApplications(freelancerId: string): Promise<Application[]> {
+    const { data, error } = await supabase
+      .from("applications")
+      .select("*, projects(title, budget)")
+      .eq("freelancer_id", freelancerId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getProjectApplications(projectId: string): Promise<Application[]> {
+    const { data, error } = await supabase
+      .from("applications")
+      .select("*, freelancer_profiles(headline, bio)")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getApplicationsForCompany(companyId: string): Promise<Application[]> {
+    const { data, error } = await supabase
+      .from("applications")
+      .select("*, projects!inner(company_id, title), freelancer_profiles(headline)")
+      .eq("projects.company_id", companyId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async applyToProject(projectId: string, freelancerId: string, proposal: string, proposedAmount: number): Promise<Application> {
+    const { data, error } = await supabase
+      .from("applications")
+      .insert({
+        project_id: projectId,
+        freelancer_id: freelancerId,
+        proposal,
+        proposed_amount: proposedAmount,
+        status: "pending",
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async updateApplicationStatus(applicationId: string, status: Application["status"]): Promise<Application> {
+    const { data, error } = await supabase
+      .from("applications")
+      .update({ status })
+      .eq("id", applicationId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
 }
+
+export const projectService = new ProjectService();
