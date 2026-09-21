@@ -1,8 +1,32 @@
+param(
+    [Parameter(Mandatory = $true)]
+    [string[]]$Accounts
+)
+
 $ErrorActionPreference = "Stop"
 
 # ============================================================
-# Configuration
+# TrustLance - Local Blockchain Development Setup
+#
+# Assumes Hardhat node is already running.
+#
+# Usage:
+#
+# .\dev-after-node.ps1 `
+#     "0xFUNDING_PRIVATE_KEY" `
+#     "0xCLIENT_ADDRESS" `
+#     "0xFREELANCER_ADDRESS" `
+#     "0xANOTHER_ADDRESS"
+#
+# First argument:
+#     Funding account private key
+#
+# Remaining arguments:
+#     Wallets that receive test ETH
+#
+# Each recipient receives 10 ETH.
 # ============================================================
+
 
 # ============================================================
 # Configuration
@@ -10,90 +34,46 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-$HostAddress = "127.0.0.1"
-$Port = 8545
-$RpcUrl = "http://${HostAddress}:${Port}"
-
 $IgnitionModule = "ignition/modules/TrustLanceFactory.ts"
 
-# Vite frontend
 $EnvFile = Join-Path $ScriptDir "..\trustlance\.env.local"
+
 $EnvVariable = "VITE_TRUSTLANCE_FACTORY_ADDRESS"
 
-$ExpectedChainId = 31337
+$FundingAmount = "10"
+
 
 # ============================================================
-# Helper functions
+# Validate arguments
 # ============================================================
 
-function Fail([string]$Message) {
-    Write-Host ""
-    Write-Host "ERROR: $Message" -ForegroundColor Red
-    Write-Host ""
-    exit 1
+if ($Accounts.Count -lt 2) {
+    throw @"
+At least two arguments are required.
+
+First argument  = funding private key
+Remaining args  = recipient wallet addresses
+
+Example:
+
+.\dev-after-node.ps1 `
+    "0xPRIVATE_KEY" `
+    "0xCLIENT_ADDRESS" `
+    "0xFREELANCER_ADDRESS"
+"@
 }
 
-function Test-PortInUse {
-    param(
-        [int]$Port
-    )
 
-    $connection = Get-NetTCPConnection `
-        -LocalPort $Port `
-        -State Listen `
-        -ErrorAction SilentlyContinue
+# ============================================================
+# Extract accounts
+# ============================================================
 
-    return $null -ne $connection
-}
+$FundPrivateKey = $Accounts[0]
 
-function Test-Rpc {
-    try {
-        $body = @{
-            jsonrpc = "2.0"
-            method  = "eth_chainId"
-            params  = @()
-            id      = 1
-        } | ConvertTo-Json -Compress
+$RecipientAddresses = @(
+    $Accounts | Select-Object -Skip 1
+)
 
-        $response = Invoke-RestMethod `
-            -Uri $RpcUrl `
-            -Method Post `
-            -ContentType "application/json" `
-            -Body $body `
-            -TimeoutSec 3
-
-        return $response
-    }
-    catch {
-        return $null
-    }
-}
-
-function Get-ProcessUsingPort {
-    param(
-        [int]$Port
-    )
-
-    $connections = Get-NetTCPConnection `
-        -LocalPort $Port `
-        -State Listen `
-        -ErrorAction SilentlyContinue
-
-    if ($null -eq $connections) {
-        return $null
-    }
-
-    $owningProcessId = $connections[0].OwningProcess
-
-    try {
-        return Get-Process `
-            -Id $owningProcessId `
-            -ErrorAction Stop
-    }
-    catch {
-        return $null
-    }
-}
 
 # ============================================================
 # Header
@@ -102,223 +82,66 @@ function Get-ProcessUsingPort {
 Clear-Host
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "      TrustLance Local Development" -ForegroundColor Cyan
+Write-Host " TrustLance Local Development Setup" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ============================================================
-# Check project
-# ============================================================
+Write-Host "Recipients: $($RecipientAddresses.Count)" -ForegroundColor Cyan
+Write-Host "Amount per wallet: $FundingAmount ETH" -ForegroundColor Cyan
+Write-Host ""
 
-Set-Location $ScriptDir
-
-if (-not (Test-Path "hardhat.config.ts")) {
-    Fail "hardhat.config.ts was not found."
-}
-
-if (-not (Test-Path $IgnitionModule)) {
-    Fail "Ignition module was not found:`n$IgnitionModule"
-}
 
 # ============================================================
-# Check pnpm
+# Fund test wallets
 # ============================================================
 
-Write-Host "Checking pnpm..." -ForegroundColor Yellow
+Write-Host "Funding test wallets..." -ForegroundColor Cyan
+Write-Host ""
 
-try {
-    $pnpmVersion = & pnpm.cmd --version 2>&1
+$env:TRANSFER_PRIVATE_KEY = $FundPrivateKey
+$env:TRANSFER_AMOUNT = $FundingAmount
+
+
+foreach ($RecipientAddress in $RecipientAddresses) {
+
+    Write-Host "--------------------------------------------" `
+        -ForegroundColor DarkGray
+
+    Write-Host "Recipient:" -ForegroundColor Yellow
+    Write-Host $RecipientAddress
+
+    Write-Host ""
+    Write-Host "Sending $FundingAmount ETH..." `
+        -ForegroundColor Cyan
+
+    $env:TRANSFER_RECIPIENT = $RecipientAddress
+
+    & pnpm.cmd hardhat run `
+        ".\scripts\transfer-test-eth.ts" `
+        --network localhost
 
     if ($LASTEXITCODE -ne 0) {
-        throw "pnpm failed."
+        throw "Failed to fund recipient: $RecipientAddress"
     }
 
-    Write-Host "pnpm: $pnpmVersion" -ForegroundColor Green
-}
-catch {
-    Fail "pnpm is not available."
-}
-
-# ============================================================
-# Check port
-# ============================================================
-
-Write-Host ""
-Write-Host "Checking port $Port..." -ForegroundColor Yellow
-
-$ExistingProcess = Get-ProcessUsingPort $Port
-
-if ($null -ne $ExistingProcess) {
-
     Write-Host ""
-    Write-Host "Port $Port is already in use." -ForegroundColor Red
-
+    Write-Host "Funded successfully." -ForegroundColor Green
     Write-Host ""
-    Write-Host "Process using the port:" -ForegroundColor Yellow
-    Write-Host "Name: $($ExistingProcess.ProcessName)"
-    Write-Host "PID : $($ExistingProcess.Id)"
-
-    Write-Host ""
-    Write-Host "If this is an old Hardhat node, stop it with:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "Stop-Process -Id $($ExistingProcess.Id) -Force"
-    Write-Host ""
-
-    exit 1
 }
 
-Write-Host "Port $Port is available." -ForegroundColor Green
+
+Write-Host "============================================" `
+    -ForegroundColor Green
+
+Write-Host "All test wallets funded." `
+    -ForegroundColor Green
+
+Write-Host "============================================" `
+    -ForegroundColor Green
+
 
 # ============================================================
-# Start Hardhat in a separate PowerShell window
-# ============================================================
-
-Write-Host ""
-Write-Host "Starting Hardhat node..." -ForegroundColor Cyan
-
-$HardhatCommand = @"
-Set-Location -LiteralPath '$ScriptDir'
-Write-Host ''
-Write-Host '============================================' -ForegroundColor Cyan
-Write-Host ' TrustLance Hardhat Local Node' -ForegroundColor Cyan
-Write-Host '============================================' -ForegroundColor Cyan
-Write-Host ''
-Write-Host 'RPC: http://$HostAddress`:$Port' -ForegroundColor Green
-Write-Host 'Chain ID: $ExpectedChainId' -ForegroundColor Green
-Write-Host ''
-Write-Host 'Keep this window open.' -ForegroundColor Yellow
-Write-Host 'Press Ctrl+C here to stop the blockchain.' -ForegroundColor Yellow
-Write-Host ''
-& pnpm.cmd hardhat node --hostname '$HostAddress' --port $Port
-"@
-
-$HardhatProcess = Start-Process `
-    -FilePath "powershell.exe" `
-    -ArgumentList @(
-        "-NoExit",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        $HardhatCommand
-    ) `
-    -PassThru
-
-if ($null -eq $HardhatProcess) {
-    Fail "Failed to start Hardhat."
-}
-
-Write-Host "Hardhat process started. PID: $($HardhatProcess.Id)" -ForegroundColor Green
-
-# ============================================================
-# Wait for RPC
-# ============================================================
-
-Write-Host ""
-Write-Host "Waiting for Hardhat RPC..." -ForegroundColor Yellow
-
-$RpcReady = $false
-$RpcResponse = $null
-
-for ($i = 1; $i -le 30; $i++) {
-
-    Start-Sleep -Seconds 1
-
-    # Check if process died
-    try {
-       Get-Process `
-            -Id $HardhatProcess.Id `
-            -ErrorAction Stop
-    }
-    catch {
-        Fail "Hardhat process exited before RPC became available."
-    }
-
-    $RpcResponse = Test-Rpc
-
-    if ($null -ne $RpcResponse) {
-        $RpcReady = $true
-        break
-    }
-
-    Write-Host "." -NoNewline
-}
-
-Write-Host ""
-
-if (-not $RpcReady) {
-    try {
-        Stop-Process `
-            -Id $HardhatProcess.Id `
-            -Force `
-            -ErrorAction SilentlyContinue
-    }
-    catch {}
-
-    Fail "Hardhat RPC did not become available."
-}
-
-Write-Host "Hardhat RPC is ready." -ForegroundColor Green
-
-# ============================================================
-# Verify chain ID
-# ============================================================
-
-$ChainIdHex = $RpcResponse.result
-
-if ($null -eq $ChainIdHex) {
-    Fail "Could not read chain ID from Hardhat."
-}
-
-$ChainId = [Convert]::ToInt64(
-    $ChainIdHex.Substring(2),
-    16
-)
-
-Write-Host "Chain ID: $ChainId" -ForegroundColor Green
-
-if ($ChainId -ne $ExpectedChainId) {
-    Fail "Unexpected chain ID $ChainId. Expected $ExpectedChainId."
-}
-
-# ============================================================
-# Check accounts
-# ============================================================
-
-Write-Host ""
-Write-Host "Checking Hardhat accounts..." -ForegroundColor Yellow
-
-try {
-
-    $accountsBody = @{
-        jsonrpc = "2.0"
-        method  = "eth_accounts"
-        params  = @()
-        id      = 1
-    } | ConvertTo-Json -Compress
-
-    $accountsResponse = Invoke-RestMethod `
-        -Uri $RpcUrl `
-        -Method Post `
-        -ContentType "application/json" `
-        -Body $accountsBody `
-        -TimeoutSec 3
-
-}
-catch {
-    Fail "Could not query Hardhat accounts."
-}
-
-if (
-    $null -eq $accountsResponse.result -or
-    $accountsResponse.result.Count -eq 0
-) {
-    Fail "Hardhat returned no accounts."
-}
-
-Write-Host "Accounts available: $($accountsResponse.result.Count)" -ForegroundColor Green
-
-# ============================================================
-# Compile
+# Compile contracts
 # ============================================================
 
 Write-Host ""
@@ -328,14 +151,15 @@ Write-Host ""
 & pnpm.cmd hardhat compile
 
 if ($LASTEXITCODE -ne 0) {
-    Fail "Hardhat compilation failed."
+    throw "Hardhat compilation failed."
 }
 
 Write-Host ""
 Write-Host "Compilation successful." -ForegroundColor Green
 
+
 # ============================================================
-# Deploy with Ignition
+# Deploy TrustLanceFactory
 # ============================================================
 
 Write-Host ""
@@ -348,13 +172,18 @@ $DeployOutput = & pnpm.cmd hardhat ignition deploy `
 
 $DeployExitCode = $LASTEXITCODE
 
+
+# Print deployment output
+
 $DeployOutput | ForEach-Object {
     Write-Host $_
 }
 
+
 if ($DeployExitCode -ne 0) {
-    Fail "Ignition deployment failed."
+    throw "Ignition deployment failed."
 }
+
 
 # ============================================================
 # Extract factory address
@@ -363,106 +192,38 @@ if ($DeployExitCode -ne 0) {
 Write-Host ""
 Write-Host "Extracting factory address..." -ForegroundColor Yellow
 
+
 $OutputText = $DeployOutput -join "`n"
+
 
 $AddressMatches = [regex]::Matches(
     $OutputText,
     "0x[a-fA-F0-9]{40}"
 )
 
+
 if ($AddressMatches.Count -eq 0) {
-    Fail "No Ethereum address was found in the deployment output."
+    throw "Could not find the deployed factory address."
 }
+
 
 $FactoryAddress = $AddressMatches[
     $AddressMatches.Count - 1
 ].Value
 
-Write-Host "Factory address:" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "Factory deployed:" -ForegroundColor Green
 Write-Host $FactoryAddress
 
-# ============================================================
-# Verify factory bytecode
-# ============================================================
-
-Write-Host ""
-Write-Host "Verifying deployed bytecode..." -ForegroundColor Yellow
-
-try {
-
-    $codeBody = @{
-        jsonrpc = "2.0"
-        method  = "eth_getCode"
-        params  = @(
-            $FactoryAddress,
-            "latest"
-        )
-        id = 1
-    } | ConvertTo-Json -Compress
-
-    $codeResponse = Invoke-RestMethod `
-        -Uri $RpcUrl `
-        -Method Post `
-        -ContentType "application/json" `
-        -Body $codeBody `
-        -TimeoutSec 3
-
-}
-catch {
-    Fail "Could not verify deployed contract bytecode."
-}
-
-if (
-    $null -eq $codeResponse.result -or
-    $codeResponse.result -eq "0x"
-) {
-    Fail "No bytecode exists at $FactoryAddress."
-}
-
-Write-Host "Factory bytecode verified." -ForegroundColor Green
 
 # ============================================================
-# Verify factory contract directly
+# Update frontend .env.local
 # ============================================================
 
 Write-Host ""
-Write-Host "Verifying factory configuration..." -ForegroundColor Yellow
+Write-Host "Updating frontend environment..." -ForegroundColor Cyan
 
-# ------------------------------------------------------------
-# clientReviewPeriod()
-# ------------------------------------------------------------
-
-# $ReviewSelector = "0x" + "f8f32e0c"
-
-# We don't hardcode ABI selectors here.
-# Instead, rely on deployment + bytecode verification.
-#
-# The factory's own tests already verify:
-# - clientReviewPeriod
-# - disputePeriod
-# - createEscrow
-# - registry
-# - events
-
-Write-Host "Factory deployment verified." -ForegroundColor Green
-
-# ============================================================
-# Update .env.local
-# ============================================================
-
-Write-Host ""
-Write-Host "Updating Vite environment..." -ForegroundColor Cyan
-
-$EnvDirectory = Split-Path -Parent $EnvFile
-
-if (-not (Test-Path $EnvDirectory)) {
-
-    New-Item `
-        -ItemType Directory `
-        -Path $EnvDirectory `
-        -Force |
-        Out-Null
-}
 
 if (-not (Test-Path $EnvFile)) {
 
@@ -473,16 +234,24 @@ if (-not (Test-Path $EnvFile)) {
         Out-Null
 }
 
+
 $EnvContent = Get-Content `
     -Path $EnvFile `
     -Raw `
     -ErrorAction SilentlyContinue
 
+
 if ($null -eq $EnvContent) {
     $EnvContent = ""
 }
 
+
 $EscapedVariable = [regex]::Escape($EnvVariable)
+
+
+# ------------------------------------------------------------
+# Replace existing variable
+# ------------------------------------------------------------
 
 if ($EnvContent -match "(?m)^$EscapedVariable=") {
 
@@ -493,6 +262,12 @@ if ($EnvContent -match "(?m)^$EscapedVariable=") {
     )
 
 }
+
+
+# ------------------------------------------------------------
+# Add variable if it doesn't exist
+# ------------------------------------------------------------
+
 else {
 
     if (
@@ -505,73 +280,67 @@ else {
     $EnvContent += "$EnvVariable=$FactoryAddress`r`n"
 }
 
+
 Set-Content `
     -Path $EnvFile `
     -Value $EnvContent `
     -NoNewline
 
+
 # ============================================================
-# Verify .env.local
+# Final output
 # ============================================================
 
-$UpdatedEnv = Get-Content `
-    -Path $EnvFile `
-    -Raw
+Write-Host ""
+Write-Host "============================================" `
+    -ForegroundColor Green
 
-if (
-    $UpdatedEnv -notmatch
-    "(?m)^$EscapedVariable=$([regex]::Escape($FactoryAddress))$"
-) {
-    Fail "Failed to update .env.local correctly."
+Write-Host " TrustLance blockchain ready" `
+    -ForegroundColor Green
+
+Write-Host "============================================" `
+    -ForegroundColor Green
+
+Write-Host ""
+
+Write-Host "RPC:" -ForegroundColor Cyan
+Write-Host "  http://127.0.0.1:8545"
+
+Write-Host ""
+
+Write-Host "Chain ID:" -ForegroundColor Cyan
+Write-Host "  31337"
+
+Write-Host ""
+
+Write-Host "Funded wallets:" -ForegroundColor Cyan
+
+foreach ($RecipientAddress in $RecipientAddresses) {
+    Write-Host "  $RecipientAddress"
 }
 
-Write-Host ".env.local updated successfully." -ForegroundColor Green
+Write-Host ""
 
-# ============================================================
-# Final
-# ============================================================
+Write-Host "ETH per wallet:" -ForegroundColor Cyan
+Write-Host "  $FundingAmount ETH"
 
 Write-Host ""
-Write-Host "============================================" -ForegroundColor Green
-Write-Host " TrustLance development environment ready" -ForegroundColor Green
-Write-Host "============================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Hardhat RPC:" -ForegroundColor Cyan
-Write-Host "  $RpcUrl"
-Write-Host ""
-Write-Host "Chain ID:" -ForegroundColor Cyan
-Write-Host "  $ChainId"
-Write-Host ""
+
 Write-Host "Factory:" -ForegroundColor Cyan
 Write-Host "  $FactoryAddress"
+
 Write-Host ""
-Write-Host "Environment:" -ForegroundColor Cyan
+
+Write-Host "Frontend environment:" -ForegroundColor Cyan
 Write-Host "  $EnvFile"
+
 Write-Host ""
+
 Write-Host "$EnvVariable=$FactoryAddress"
-Write-Host ""
-Write-Host "Hardhat is running in the separate window." -ForegroundColor Green
-Write-Host "You can now start Vite normally." -ForegroundColor Green
-Write-Host ""
-Write-Host "Press ENTER to stop Hardhat and close this development session." -ForegroundColor Yellow
-Write-Host ""
-
-
-
-# ============================================================
-# Final verification
-# ============================================================
-
-Start-Sleep -Milliseconds 500
-
-if (Test-PortInUse $Port) {
-    Write-Host ""
-    Write-Host "WARNING: Port $Port is still in use." -ForegroundColor Yellow
-}
-else {
-    Write-Host ""
-    Write-Host "Hardhat stopped successfully." -ForegroundColor Green
-}
 
 Write-Host ""
-Write-Host "Development session ended."
+
+Write-Host "You can now start the Vite frontend." `
+    -ForegroundColor Green
+
+Write-Host ""

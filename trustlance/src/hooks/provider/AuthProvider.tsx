@@ -7,7 +7,7 @@ import {
 } from "react";
 
 import type { Session, User } from "@supabase/supabase-js";
-import { authService } from "../../lib/services/AuthService";
+import { authService } from "../../lib/services/auth.service";
 
 // import { authService } from "@/services";
 

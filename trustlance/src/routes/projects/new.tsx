@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { useState } from "react";
-import { profileService } from "../../lib/services/ProfileService";
-import { projectService } from "../../lib/services/ProjectService";
+import { profileService } from "../../lib/services/profile.service";
+import { projectService } from "../../lib/services/project.service";
 
 export const Route = createFileRoute("/projects/new")({
   component: NewProjectPage,

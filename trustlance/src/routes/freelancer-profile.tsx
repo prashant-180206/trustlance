@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { profileService } from "../lib/services/ProfileService";
+import { profileService } from "../lib/services/profile.service";
 import { useEffect, useState } from "react";
 import type { Tables } from "../lib/supabase/types";
 

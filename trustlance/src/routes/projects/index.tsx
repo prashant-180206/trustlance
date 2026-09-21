@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 // import { projectService } from "../lib/services/ProjectService";
 import { useEffect, useState } from "react";
-import { projectService } from "../../lib/services/ProjectService";
+import { projectService } from "../../lib/services/project.service";
 
 export const Route = createFileRoute("/projects/")({
   component: ProjectsIndexPage,

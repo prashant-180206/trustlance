@@ -1,17 +1,18 @@
+// src/lib/wagmi.ts
+
 import { createConfig, http } from "wagmi";
-import { injected } from "wagmi/connectors";
-import { hardhatLocal } from "./config";
+import { hardhat } from "wagmi/chains";
+import { createPublicClient } from "viem";
 
-export const wagmiConfig = createConfig({
-  chains: [hardhatLocal],
+export const config = createConfig({
+    chains: [hardhat],
 
-  connectors: [
-    injected(),
-  ],
+    transports: {
+        [hardhat.id]: http("http://127.0.0.1:8545"),
+    },
+});
 
-  transports: {
-    [hardhatLocal.id]: http(
-      process.env.NEXT_PUBLIC_RPC_URL,
-    ),
-  },
+export const publicClient = createPublicClient({
+    chain: hardhat,
+    transport: http("http://127.0.0.1:8545"),
 });

@@ -2,8 +2,8 @@ import { createFileRoute, useParams } from "@tanstack/react-router";
 
 import { useEffect, useState } from "react";
 import type { Tables } from "../../lib/supabase/types";
-import { projectService } from "../../lib/services/ProjectService";
-import { profileService } from "../../lib/services/ProfileService";
+import { projectService } from "../../lib/services/project.service";
+import { profileService } from "../../lib/services/profile.service";
 
 
 type Project = Tables<"projects">;

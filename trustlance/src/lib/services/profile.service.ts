@@ -1,5 +1,5 @@
 import { supabase } from "../supabase/client";
-import type { Database, Tables } from "../supabase/types";
+import type {  Tables } from "../supabase/types";
 
 type Profile = Tables<"profiles">;
 type FreelancerProfile = Tables<"freelancer_profiles">;
