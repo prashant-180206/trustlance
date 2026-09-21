@@ -43,7 +43,9 @@ export class AuthService {
             throw profileError;
         }
 
-        return data;
+        return {
+            data, accountType
+        };
     }
 
     async signOut() {

@@ -8,16 +8,15 @@ import type { Tables } from "../supabase/types";
 import { blockchainService } from "./blockchain.service";
 
 type Project = Tables<"projects">;
-type Application = Tables<"applications">;
 
-type CreateProjectData = {
+export type CreateProjectData = {
     title: string;
     description: string;
     budget: number;
     deadline?: string;
 };
 
-type FundProjectData = {
+export type FundProjectData = {
     amounts: bigint[];
     descriptions: string[];
 };
@@ -172,142 +171,6 @@ export class ProjectService {
 
 
     // ============================================================
-    // APPLICATIONS
-    // ============================================================
-
-    async applyToProject(
-        projectId: string,
-        freelancerId: string,
-        proposal: string,
-        proposedAmount: number,
-    ): Promise<Application> {
-
-        const {
-            data,
-            error,
-        } = await supabase
-            .from("applications")
-            .insert({
-                project_id: projectId,
-                freelancer_id: freelancerId,
-                proposal,
-                proposed_amount: proposedAmount,
-                status: "pending",
-            })
-            .select()
-            .single();
-
-        if (error) {
-            throw error;
-        }
-
-        return data;
-    }
-
-
-    async getFreelancerApplications(
-        freelancerId: string,
-    ): Promise<Application[]> {
-
-        const {
-            data,
-            error,
-        } = await supabase
-            .from("applications")
-            .select("*, projects(title, budget)")
-            .eq("freelancer_id", freelancerId)
-            .order("created_at", {
-                ascending: false,
-            });
-
-        if (error) {
-            throw error;
-        }
-
-        return data || [];
-    }
-
-
-    async getProjectApplications(
-        projectId: string,
-    ): Promise<Application[]> {
-
-        const {
-            data,
-            error,
-        } = await supabase
-            .from("applications")
-            .select(
-                "*, freelancer_profiles(headline, bio)",
-            )
-            .eq("project_id", projectId)
-            .order("created_at", {
-                ascending: false,
-            });
-
-        if (error) {
-            throw error;
-        }
-
-        return data || [];
-    }
-
-
-    async getApplicationsForCompany(
-        companyId: string,
-    ): Promise<Application[]> {
-
-        const {
-            data,
-            error,
-        } = await supabase
-            .from("applications")
-            .select(
-                "*, projects!inner(company_id, title), freelancer_profiles(headline)",
-            )
-            .eq("projects.company_id", companyId)
-            .order("created_at", {
-                ascending: false,
-            });
-
-        if (error) {
-            throw error;
-        }
-
-        return data || [];
-    }
-
-
-    // ============================================================
-    // APPLICATION STATUS
-    // ============================================================
-
-    async updateApplicationStatus(
-        applicationId: string,
-        status: Application["status"],
-    ): Promise<Application> {
-
-        const {
-            data,
-            error,
-        } = await supabase
-            .from("applications")
-            .update({
-                status,
-            })
-            .eq("id", applicationId)
-            .select()
-            .single();
-
-        if (error) {
-            throw error;
-        }
-
-        return data;
-    }
-
-
-    // ============================================================
     // BLOCKCHAIN PROJECT
     // ============================================================
 
@@ -434,134 +297,7 @@ export class ProjectService {
     }
 
 
-    // ============================================================
-    // MILESTONES
-    // ============================================================
 
-    async submitMilestone(
-        projectId: string,
-        index: bigint,
-        cid: string,
-    ): Promise<Hash> {
-
-        const escrowAddress =
-            await this.getProjectEscrow(projectId);
-
-        return blockchainService.submitMilestone(
-            escrowAddress,
-            index,
-            cid,
-        );
-    }
-
-
-    async approveMilestone(
-        projectId: string,
-        index: bigint,
-    ): Promise<Hash> {
-
-        const escrowAddress =
-            await this.getProjectEscrow(projectId);
-
-        return blockchainService.approveMilestone(
-            escrowAddress,
-            index,
-        );
-    }
-
-
-    async rejectMilestone(
-        projectId: string,
-        index: bigint,
-    ): Promise<Hash> {
-
-        const escrowAddress =
-            await this.getProjectEscrow(projectId);
-
-        return blockchainService.rejectMilestone(
-            escrowAddress,
-            index,
-        );
-    }
-
-
-    async autoApproveMilestone(
-        projectId: string,
-        index: bigint,
-    ): Promise<Hash> {
-
-        const escrowAddress =
-            await this.getProjectEscrow(projectId);
-
-        return blockchainService.autoApproveMilestone(
-            escrowAddress,
-            index,
-        );
-    }
-
-
-    // ============================================================
-    // DISPUTES
-    // ============================================================
-
-    async raiseDispute(
-        projectId: string,
-        index: bigint,
-    ): Promise<Hash> {
-
-        const escrowAddress =
-            await this.getProjectEscrow(projectId);
-
-        return blockchainService.raiseDispute(
-            escrowAddress,
-            index,
-        );
-    }
-
-
-    async withdrawRejection(
-        projectId: string,
-        index: bigint,
-    ): Promise<Hash> {
-
-        const escrowAddress =
-            await this.getProjectEscrow(projectId);
-
-        return blockchainService.withdrawRejection(
-            escrowAddress,
-            index,
-        );
-    }
-
-
-    async acceptRejection(
-        projectId: string,
-        index: bigint,
-    ): Promise<Hash> {
-
-        const escrowAddress =
-            await this.getProjectEscrow(projectId);
-
-        return blockchainService.acceptRejection(
-            escrowAddress,
-            index,
-        );
-    }
-
-
-    async autoResolveDispute(
-        projectId: string,
-        index: bigint,
-    ): Promise<Hash> {
-
-        const escrowAddress =
-            await this.getProjectEscrow(projectId);
-
-        return blockchainService.autoResolveDispute(
-            escrowAddress,
-            index,
-        );
-    }
 
 
     // ============================================================

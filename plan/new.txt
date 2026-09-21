@@ -1,0 +1,56 @@
+src/routes/
+├── __root.tsx
+├── index.tsx
+│
+├── auth/
+│   └── login.tsx
+│
+├── projects/
+│   └── $projectId/
+│       ├── route.tsx
+│       └── index.tsx
+│
+├── freelancer/
+│   ├── route.tsx
+│   ├── dashboard.tsx
+│   ├── profile.tsx
+│   ├── projects/
+│   │   ├── index.tsx
+│   │   └── $projectId.tsx
+│   ├── applications/
+│   │   ├── index.tsx
+│   │   └── $applicationId.tsx
+│   ├── milestones/
+│   │   ├── index.tsx
+│   │   └── $milestoneId.tsx
+│   ├── disputes/
+│   │   ├── index.tsx
+│   │   └── $disputeId.tsx
+│   └── settings.tsx
+│
+├── company/
+│   ├── route.tsx
+│   ├── dashboard.tsx
+│   ├── profile.tsx
+│   ├── projects/
+│   │   ├── index.tsx
+│   │   ├── new.tsx
+│   │   └── $projectId.tsx
+│   ├── applications/
+│   │   ├── index.tsx
+│   │   └── $applicationId.tsx
+│   ├── milestones/
+│   │   ├── index.tsx
+│   │   └── $milestoneId.tsx
+│   ├── disputes/
+│   │   ├── index.tsx
+│   │   └── $disputeId.tsx
+│   └── settings.tsx
+│
+└── admin/
+    ├── route.tsx
+    ├── dashboard.tsx
+    ├── users.tsx
+    ├── projects.tsx
+    ├── disputes.tsx
+    └── transactions.tsx

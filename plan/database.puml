@@ -123,6 +123,7 @@ entity "projects" as projects {
     deadline : TIMESTAMPTZ
     status : project_status
     created_at : TIMESTAMPTZ
+    escrow_address : TEXT
     updated_at : TIMESTAMPTZ
 }
 
