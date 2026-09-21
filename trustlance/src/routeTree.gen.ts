@@ -26,8 +26,17 @@ import { Route as CompanyProjectsNewRouteImport } from './routes/company/project
 import { Route as FreelancerApplicationsIndexRouteImport } from './routes/freelancer/applications/index'
 import { Route as FreelancerApplicationsApplicationIdRouteImport } from './routes/freelancer/applications/$applicationId'
 import { Route as FreelancerProjectsIndexRouteImport } from './routes/freelancer/projects/index'
-import { Route as FreelancerProjectsProjectIdRouteImport } from './routes/freelancer/projects/$projectId'
 import { Route as ProjectProjectIdIndexRouteImport } from './routes/project/$projectId/index'
+import { Route as FreelancerProjectsProjectIdIndexRouteImport } from './routes/freelancer/projects/$projectId/index'
+import { Route as CompanyProjectsProjectIdDisputesIndexRouteImport } from './routes/company/projects/$projectId/disputes/index'
+import { Route as CompanyProjectsProjectIdDisputesDisputeIdRouteImport } from './routes/company/projects/$projectId/disputes/$disputeId'
+import { Route as CompanyProjectsProjectIdMilestonesIndexRouteImport } from './routes/company/projects/$projectId/milestones/index'
+import { Route as CompanyProjectsProjectIdMilestonesMilestoneIdRouteImport } from './routes/company/projects/$projectId/milestones/$milestoneId'
+import { Route as CompanyProjectsProjectIdMilestonesNewRouteImport } from './routes/company/projects/$projectId/milestones/new'
+import { Route as FreelancerProjectsProjectIdDisputesIndexRouteImport } from './routes/freelancer/projects/$projectId/disputes/index'
+import { Route as FreelancerProjectsProjectIdDisputesDisputeIdRouteImport } from './routes/freelancer/projects/$projectId/disputes/$disputeId'
+import { Route as FreelancerProjectsProjectIdMilestonesIndexRouteImport } from './routes/freelancer/projects/$projectId/milestones/index'
+import { Route as FreelancerProjectsProjectIdMilestonesMilestoneIdRouteImport } from './routes/freelancer/projects/$projectId/milestones/$milestoneId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -119,17 +128,71 @@ const FreelancerProjectsIndexRoute = FreelancerProjectsIndexRouteImport.update({
   path: '/projects/',
   getParentRoute: () => FreelancerRouteRoute,
 } as any)
-const FreelancerProjectsProjectIdRoute =
-  FreelancerProjectsProjectIdRouteImport.update({
-    id: '/projects/$projectId',
-    path: '/projects/$projectId',
-    getParentRoute: () => FreelancerRouteRoute,
-  } as any)
 const ProjectProjectIdIndexRoute = ProjectProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProjectProjectIdRouteRoute,
 } as any)
+const FreelancerProjectsProjectIdIndexRoute =
+  FreelancerProjectsProjectIdIndexRouteImport.update({
+    id: '/projects/$projectId/',
+    path: '/projects/$projectId/',
+    getParentRoute: () => FreelancerRouteRoute,
+  } as any)
+const CompanyProjectsProjectIdDisputesIndexRoute =
+  CompanyProjectsProjectIdDisputesIndexRouteImport.update({
+    id: '/disputes/',
+    path: '/disputes/',
+    getParentRoute: () => CompanyProjectsProjectIdRoute,
+  } as any)
+const CompanyProjectsProjectIdDisputesDisputeIdRoute =
+  CompanyProjectsProjectIdDisputesDisputeIdRouteImport.update({
+    id: '/disputes/$disputeId',
+    path: '/disputes/$disputeId',
+    getParentRoute: () => CompanyProjectsProjectIdRoute,
+  } as any)
+const CompanyProjectsProjectIdMilestonesIndexRoute =
+  CompanyProjectsProjectIdMilestonesIndexRouteImport.update({
+    id: '/milestones/',
+    path: '/milestones/',
+    getParentRoute: () => CompanyProjectsProjectIdRoute,
+  } as any)
+const CompanyProjectsProjectIdMilestonesMilestoneIdRoute =
+  CompanyProjectsProjectIdMilestonesMilestoneIdRouteImport.update({
+    id: '/milestones/$milestoneId',
+    path: '/milestones/$milestoneId',
+    getParentRoute: () => CompanyProjectsProjectIdRoute,
+  } as any)
+const CompanyProjectsProjectIdMilestonesNewRoute =
+  CompanyProjectsProjectIdMilestonesNewRouteImport.update({
+    id: '/milestones/new',
+    path: '/milestones/new',
+    getParentRoute: () => CompanyProjectsProjectIdRoute,
+  } as any)
+const FreelancerProjectsProjectIdDisputesIndexRoute =
+  FreelancerProjectsProjectIdDisputesIndexRouteImport.update({
+    id: '/projects/$projectId/disputes/',
+    path: '/projects/$projectId/disputes/',
+    getParentRoute: () => FreelancerRouteRoute,
+  } as any)
+const FreelancerProjectsProjectIdDisputesDisputeIdRoute =
+  FreelancerProjectsProjectIdDisputesDisputeIdRouteImport.update({
+    id: '/projects/$projectId/disputes/$disputeId',
+    path: '/projects/$projectId/disputes/$disputeId',
+    getParentRoute: () => FreelancerRouteRoute,
+  } as any)
+const FreelancerProjectsProjectIdMilestonesIndexRoute =
+  FreelancerProjectsProjectIdMilestonesIndexRouteImport.update({
+    id: '/projects/$projectId/milestones/',
+    path: '/projects/$projectId/milestones/',
+    getParentRoute: () => FreelancerRouteRoute,
+  } as any)
+const FreelancerProjectsProjectIdMilestonesMilestoneIdRoute =
+  FreelancerProjectsProjectIdMilestonesMilestoneIdRouteImport.update({
+    id: '/projects/$projectId/milestones/$milestoneId',
+    path: '/projects/$projectId/milestones/$milestoneId',
+    getParentRoute: () => FreelancerRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -142,15 +205,24 @@ export interface FileRoutesByFullPath {
   '/freelancer/dashboard': typeof FreelancerDashboardRoute
   '/freelancer/profile': typeof FreelancerProfileRoute
   '/company/applications/$applicationId': typeof CompanyApplicationsApplicationIdRoute
-  '/company/projects/$projectId': typeof CompanyProjectsProjectIdRoute
+  '/company/projects/$projectId': typeof CompanyProjectsProjectIdRouteWithChildren
   '/company/projects/new': typeof CompanyProjectsNewRoute
   '/freelancer/applications/$applicationId': typeof FreelancerApplicationsApplicationIdRoute
-  '/freelancer/projects/$projectId': typeof FreelancerProjectsProjectIdRoute
   '/company/applications/': typeof CompanyApplicationsIndexRoute
   '/company/projects/': typeof CompanyProjectsIndexRoute
   '/freelancer/applications/': typeof FreelancerApplicationsIndexRoute
   '/freelancer/projects/': typeof FreelancerProjectsIndexRoute
   '/project/$projectId/': typeof ProjectProjectIdIndexRoute
+  '/freelancer/projects/$projectId/': typeof FreelancerProjectsProjectIdIndexRoute
+  '/company/projects/$projectId/disputes/$disputeId': typeof CompanyProjectsProjectIdDisputesDisputeIdRoute
+  '/company/projects/$projectId/milestones/$milestoneId': typeof CompanyProjectsProjectIdMilestonesMilestoneIdRoute
+  '/company/projects/$projectId/milestones/new': typeof CompanyProjectsProjectIdMilestonesNewRoute
+  '/freelancer/projects/$projectId/disputes/$disputeId': typeof FreelancerProjectsProjectIdDisputesDisputeIdRoute
+  '/freelancer/projects/$projectId/milestones/$milestoneId': typeof FreelancerProjectsProjectIdMilestonesMilestoneIdRoute
+  '/company/projects/$projectId/disputes/': typeof CompanyProjectsProjectIdDisputesIndexRoute
+  '/company/projects/$projectId/milestones/': typeof CompanyProjectsProjectIdMilestonesIndexRoute
+  '/freelancer/projects/$projectId/disputes/': typeof FreelancerProjectsProjectIdDisputesIndexRoute
+  '/freelancer/projects/$projectId/milestones/': typeof FreelancerProjectsProjectIdMilestonesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -162,15 +234,24 @@ export interface FileRoutesByTo {
   '/freelancer/dashboard': typeof FreelancerDashboardRoute
   '/freelancer/profile': typeof FreelancerProfileRoute
   '/company/applications/$applicationId': typeof CompanyApplicationsApplicationIdRoute
-  '/company/projects/$projectId': typeof CompanyProjectsProjectIdRoute
+  '/company/projects/$projectId': typeof CompanyProjectsProjectIdRouteWithChildren
   '/company/projects/new': typeof CompanyProjectsNewRoute
   '/freelancer/applications/$applicationId': typeof FreelancerApplicationsApplicationIdRoute
-  '/freelancer/projects/$projectId': typeof FreelancerProjectsProjectIdRoute
   '/company/applications': typeof CompanyApplicationsIndexRoute
   '/company/projects': typeof CompanyProjectsIndexRoute
   '/freelancer/applications': typeof FreelancerApplicationsIndexRoute
   '/freelancer/projects': typeof FreelancerProjectsIndexRoute
   '/project/$projectId': typeof ProjectProjectIdIndexRoute
+  '/freelancer/projects/$projectId': typeof FreelancerProjectsProjectIdIndexRoute
+  '/company/projects/$projectId/disputes/$disputeId': typeof CompanyProjectsProjectIdDisputesDisputeIdRoute
+  '/company/projects/$projectId/milestones/$milestoneId': typeof CompanyProjectsProjectIdMilestonesMilestoneIdRoute
+  '/company/projects/$projectId/milestones/new': typeof CompanyProjectsProjectIdMilestonesNewRoute
+  '/freelancer/projects/$projectId/disputes/$disputeId': typeof FreelancerProjectsProjectIdDisputesDisputeIdRoute
+  '/freelancer/projects/$projectId/milestones/$milestoneId': typeof FreelancerProjectsProjectIdMilestonesMilestoneIdRoute
+  '/company/projects/$projectId/disputes': typeof CompanyProjectsProjectIdDisputesIndexRoute
+  '/company/projects/$projectId/milestones': typeof CompanyProjectsProjectIdMilestonesIndexRoute
+  '/freelancer/projects/$projectId/disputes': typeof FreelancerProjectsProjectIdDisputesIndexRoute
+  '/freelancer/projects/$projectId/milestones': typeof FreelancerProjectsProjectIdMilestonesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -184,15 +265,24 @@ export interface FileRoutesById {
   '/freelancer/dashboard': typeof FreelancerDashboardRoute
   '/freelancer/profile': typeof FreelancerProfileRoute
   '/company/applications/$applicationId': typeof CompanyApplicationsApplicationIdRoute
-  '/company/projects/$projectId': typeof CompanyProjectsProjectIdRoute
+  '/company/projects/$projectId': typeof CompanyProjectsProjectIdRouteWithChildren
   '/company/projects/new': typeof CompanyProjectsNewRoute
   '/freelancer/applications/$applicationId': typeof FreelancerApplicationsApplicationIdRoute
-  '/freelancer/projects/$projectId': typeof FreelancerProjectsProjectIdRoute
   '/company/applications/': typeof CompanyApplicationsIndexRoute
   '/company/projects/': typeof CompanyProjectsIndexRoute
   '/freelancer/applications/': typeof FreelancerApplicationsIndexRoute
   '/freelancer/projects/': typeof FreelancerProjectsIndexRoute
   '/project/$projectId/': typeof ProjectProjectIdIndexRoute
+  '/freelancer/projects/$projectId/': typeof FreelancerProjectsProjectIdIndexRoute
+  '/company/projects/$projectId/disputes/$disputeId': typeof CompanyProjectsProjectIdDisputesDisputeIdRoute
+  '/company/projects/$projectId/milestones/$milestoneId': typeof CompanyProjectsProjectIdMilestonesMilestoneIdRoute
+  '/company/projects/$projectId/milestones/new': typeof CompanyProjectsProjectIdMilestonesNewRoute
+  '/freelancer/projects/$projectId/disputes/$disputeId': typeof FreelancerProjectsProjectIdDisputesDisputeIdRoute
+  '/freelancer/projects/$projectId/milestones/$milestoneId': typeof FreelancerProjectsProjectIdMilestonesMilestoneIdRoute
+  '/company/projects/$projectId/disputes/': typeof CompanyProjectsProjectIdDisputesIndexRoute
+  '/company/projects/$projectId/milestones/': typeof CompanyProjectsProjectIdMilestonesIndexRoute
+  '/freelancer/projects/$projectId/disputes/': typeof FreelancerProjectsProjectIdDisputesIndexRoute
+  '/freelancer/projects/$projectId/milestones/': typeof FreelancerProjectsProjectIdMilestonesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -210,12 +300,21 @@ export interface FileRouteTypes {
     | '/company/projects/$projectId'
     | '/company/projects/new'
     | '/freelancer/applications/$applicationId'
-    | '/freelancer/projects/$projectId'
     | '/company/applications/'
     | '/company/projects/'
     | '/freelancer/applications/'
     | '/freelancer/projects/'
     | '/project/$projectId/'
+    | '/freelancer/projects/$projectId/'
+    | '/company/projects/$projectId/disputes/$disputeId'
+    | '/company/projects/$projectId/milestones/$milestoneId'
+    | '/company/projects/$projectId/milestones/new'
+    | '/freelancer/projects/$projectId/disputes/$disputeId'
+    | '/freelancer/projects/$projectId/milestones/$milestoneId'
+    | '/company/projects/$projectId/disputes/'
+    | '/company/projects/$projectId/milestones/'
+    | '/freelancer/projects/$projectId/disputes/'
+    | '/freelancer/projects/$projectId/milestones/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -230,12 +329,21 @@ export interface FileRouteTypes {
     | '/company/projects/$projectId'
     | '/company/projects/new'
     | '/freelancer/applications/$applicationId'
-    | '/freelancer/projects/$projectId'
     | '/company/applications'
     | '/company/projects'
     | '/freelancer/applications'
     | '/freelancer/projects'
     | '/project/$projectId'
+    | '/freelancer/projects/$projectId'
+    | '/company/projects/$projectId/disputes/$disputeId'
+    | '/company/projects/$projectId/milestones/$milestoneId'
+    | '/company/projects/$projectId/milestones/new'
+    | '/freelancer/projects/$projectId/disputes/$disputeId'
+    | '/freelancer/projects/$projectId/milestones/$milestoneId'
+    | '/company/projects/$projectId/disputes'
+    | '/company/projects/$projectId/milestones'
+    | '/freelancer/projects/$projectId/disputes'
+    | '/freelancer/projects/$projectId/milestones'
   id:
     | '__root__'
     | '/'
@@ -251,12 +359,21 @@ export interface FileRouteTypes {
     | '/company/projects/$projectId'
     | '/company/projects/new'
     | '/freelancer/applications/$applicationId'
-    | '/freelancer/projects/$projectId'
     | '/company/applications/'
     | '/company/projects/'
     | '/freelancer/applications/'
     | '/freelancer/projects/'
     | '/project/$projectId/'
+    | '/freelancer/projects/$projectId/'
+    | '/company/projects/$projectId/disputes/$disputeId'
+    | '/company/projects/$projectId/milestones/$milestoneId'
+    | '/company/projects/$projectId/milestones/new'
+    | '/freelancer/projects/$projectId/disputes/$disputeId'
+    | '/freelancer/projects/$projectId/milestones/$milestoneId'
+    | '/company/projects/$projectId/disputes/'
+    | '/company/projects/$projectId/milestones/'
+    | '/freelancer/projects/$projectId/disputes/'
+    | '/freelancer/projects/$projectId/milestones/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -388,13 +505,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FreelancerProjectsIndexRouteImport
       parentRoute: typeof FreelancerRouteRoute
     }
-    '/freelancer/projects/$projectId': {
-      id: '/freelancer/projects/$projectId'
-      path: '/projects/$projectId'
-      fullPath: '/freelancer/projects/$projectId'
-      preLoaderRoute: typeof FreelancerProjectsProjectIdRouteImport
-      parentRoute: typeof FreelancerRouteRoute
-    }
     '/project/$projectId/': {
       id: '/project/$projectId/'
       path: '/'
@@ -402,14 +512,111 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectProjectIdIndexRouteImport
       parentRoute: typeof ProjectProjectIdRouteRoute
     }
+    '/freelancer/projects/$projectId/': {
+      id: '/freelancer/projects/$projectId/'
+      path: '/projects/$projectId'
+      fullPath: '/freelancer/projects/$projectId/'
+      preLoaderRoute: typeof FreelancerProjectsProjectIdIndexRouteImport
+      parentRoute: typeof FreelancerRouteRoute
+    }
+    '/company/projects/$projectId/disputes/': {
+      id: '/company/projects/$projectId/disputes/'
+      path: '/disputes'
+      fullPath: '/company/projects/$projectId/disputes/'
+      preLoaderRoute: typeof CompanyProjectsProjectIdDisputesIndexRouteImport
+      parentRoute: typeof CompanyProjectsProjectIdRoute
+    }
+    '/company/projects/$projectId/disputes/$disputeId': {
+      id: '/company/projects/$projectId/disputes/$disputeId'
+      path: '/disputes/$disputeId'
+      fullPath: '/company/projects/$projectId/disputes/$disputeId'
+      preLoaderRoute: typeof CompanyProjectsProjectIdDisputesDisputeIdRouteImport
+      parentRoute: typeof CompanyProjectsProjectIdRoute
+    }
+    '/company/projects/$projectId/milestones/': {
+      id: '/company/projects/$projectId/milestones/'
+      path: '/milestones'
+      fullPath: '/company/projects/$projectId/milestones/'
+      preLoaderRoute: typeof CompanyProjectsProjectIdMilestonesIndexRouteImport
+      parentRoute: typeof CompanyProjectsProjectIdRoute
+    }
+    '/company/projects/$projectId/milestones/$milestoneId': {
+      id: '/company/projects/$projectId/milestones/$milestoneId'
+      path: '/milestones/$milestoneId'
+      fullPath: '/company/projects/$projectId/milestones/$milestoneId'
+      preLoaderRoute: typeof CompanyProjectsProjectIdMilestonesMilestoneIdRouteImport
+      parentRoute: typeof CompanyProjectsProjectIdRoute
+    }
+    '/company/projects/$projectId/milestones/new': {
+      id: '/company/projects/$projectId/milestones/new'
+      path: '/milestones/new'
+      fullPath: '/company/projects/$projectId/milestones/new'
+      preLoaderRoute: typeof CompanyProjectsProjectIdMilestonesNewRouteImport
+      parentRoute: typeof CompanyProjectsProjectIdRoute
+    }
+    '/freelancer/projects/$projectId/disputes/': {
+      id: '/freelancer/projects/$projectId/disputes/'
+      path: '/projects/$projectId/disputes'
+      fullPath: '/freelancer/projects/$projectId/disputes/'
+      preLoaderRoute: typeof FreelancerProjectsProjectIdDisputesIndexRouteImport
+      parentRoute: typeof FreelancerRouteRoute
+    }
+    '/freelancer/projects/$projectId/disputes/$disputeId': {
+      id: '/freelancer/projects/$projectId/disputes/$disputeId'
+      path: '/projects/$projectId/disputes/$disputeId'
+      fullPath: '/freelancer/projects/$projectId/disputes/$disputeId'
+      preLoaderRoute: typeof FreelancerProjectsProjectIdDisputesDisputeIdRouteImport
+      parentRoute: typeof FreelancerRouteRoute
+    }
+    '/freelancer/projects/$projectId/milestones/': {
+      id: '/freelancer/projects/$projectId/milestones/'
+      path: '/projects/$projectId/milestones'
+      fullPath: '/freelancer/projects/$projectId/milestones/'
+      preLoaderRoute: typeof FreelancerProjectsProjectIdMilestonesIndexRouteImport
+      parentRoute: typeof FreelancerRouteRoute
+    }
+    '/freelancer/projects/$projectId/milestones/$milestoneId': {
+      id: '/freelancer/projects/$projectId/milestones/$milestoneId'
+      path: '/projects/$projectId/milestones/$milestoneId'
+      fullPath: '/freelancer/projects/$projectId/milestones/$milestoneId'
+      preLoaderRoute: typeof FreelancerProjectsProjectIdMilestonesMilestoneIdRouteImport
+      parentRoute: typeof FreelancerRouteRoute
+    }
   }
 }
+
+interface CompanyProjectsProjectIdRouteChildren {
+  CompanyProjectsProjectIdDisputesDisputeIdRoute: typeof CompanyProjectsProjectIdDisputesDisputeIdRoute
+  CompanyProjectsProjectIdMilestonesMilestoneIdRoute: typeof CompanyProjectsProjectIdMilestonesMilestoneIdRoute
+  CompanyProjectsProjectIdMilestonesNewRoute: typeof CompanyProjectsProjectIdMilestonesNewRoute
+  CompanyProjectsProjectIdDisputesIndexRoute: typeof CompanyProjectsProjectIdDisputesIndexRoute
+  CompanyProjectsProjectIdMilestonesIndexRoute: typeof CompanyProjectsProjectIdMilestonesIndexRoute
+}
+
+const CompanyProjectsProjectIdRouteChildren: CompanyProjectsProjectIdRouteChildren =
+  {
+    CompanyProjectsProjectIdDisputesDisputeIdRoute:
+      CompanyProjectsProjectIdDisputesDisputeIdRoute,
+    CompanyProjectsProjectIdMilestonesMilestoneIdRoute:
+      CompanyProjectsProjectIdMilestonesMilestoneIdRoute,
+    CompanyProjectsProjectIdMilestonesNewRoute:
+      CompanyProjectsProjectIdMilestonesNewRoute,
+    CompanyProjectsProjectIdDisputesIndexRoute:
+      CompanyProjectsProjectIdDisputesIndexRoute,
+    CompanyProjectsProjectIdMilestonesIndexRoute:
+      CompanyProjectsProjectIdMilestonesIndexRoute,
+  }
+
+const CompanyProjectsProjectIdRouteWithChildren =
+  CompanyProjectsProjectIdRoute._addFileChildren(
+    CompanyProjectsProjectIdRouteChildren,
+  )
 
 interface CompanyRouteRouteChildren {
   CompanyDashboardRoute: typeof CompanyDashboardRoute
   CompanyProfileRoute: typeof CompanyProfileRoute
   CompanyApplicationsApplicationIdRoute: typeof CompanyApplicationsApplicationIdRoute
-  CompanyProjectsProjectIdRoute: typeof CompanyProjectsProjectIdRoute
+  CompanyProjectsProjectIdRoute: typeof CompanyProjectsProjectIdRouteWithChildren
   CompanyProjectsNewRoute: typeof CompanyProjectsNewRoute
   CompanyApplicationsIndexRoute: typeof CompanyApplicationsIndexRoute
   CompanyProjectsIndexRoute: typeof CompanyProjectsIndexRoute
@@ -419,7 +626,7 @@ const CompanyRouteRouteChildren: CompanyRouteRouteChildren = {
   CompanyDashboardRoute: CompanyDashboardRoute,
   CompanyProfileRoute: CompanyProfileRoute,
   CompanyApplicationsApplicationIdRoute: CompanyApplicationsApplicationIdRoute,
-  CompanyProjectsProjectIdRoute: CompanyProjectsProjectIdRoute,
+  CompanyProjectsProjectIdRoute: CompanyProjectsProjectIdRouteWithChildren,
   CompanyProjectsNewRoute: CompanyProjectsNewRoute,
   CompanyApplicationsIndexRoute: CompanyApplicationsIndexRoute,
   CompanyProjectsIndexRoute: CompanyProjectsIndexRoute,
@@ -433,9 +640,13 @@ interface FreelancerRouteRouteChildren {
   FreelancerDashboardRoute: typeof FreelancerDashboardRoute
   FreelancerProfileRoute: typeof FreelancerProfileRoute
   FreelancerApplicationsApplicationIdRoute: typeof FreelancerApplicationsApplicationIdRoute
-  FreelancerProjectsProjectIdRoute: typeof FreelancerProjectsProjectIdRoute
   FreelancerApplicationsIndexRoute: typeof FreelancerApplicationsIndexRoute
   FreelancerProjectsIndexRoute: typeof FreelancerProjectsIndexRoute
+  FreelancerProjectsProjectIdIndexRoute: typeof FreelancerProjectsProjectIdIndexRoute
+  FreelancerProjectsProjectIdDisputesDisputeIdRoute: typeof FreelancerProjectsProjectIdDisputesDisputeIdRoute
+  FreelancerProjectsProjectIdMilestonesMilestoneIdRoute: typeof FreelancerProjectsProjectIdMilestonesMilestoneIdRoute
+  FreelancerProjectsProjectIdDisputesIndexRoute: typeof FreelancerProjectsProjectIdDisputesIndexRoute
+  FreelancerProjectsProjectIdMilestonesIndexRoute: typeof FreelancerProjectsProjectIdMilestonesIndexRoute
 }
 
 const FreelancerRouteRouteChildren: FreelancerRouteRouteChildren = {
@@ -443,9 +654,17 @@ const FreelancerRouteRouteChildren: FreelancerRouteRouteChildren = {
   FreelancerProfileRoute: FreelancerProfileRoute,
   FreelancerApplicationsApplicationIdRoute:
     FreelancerApplicationsApplicationIdRoute,
-  FreelancerProjectsProjectIdRoute: FreelancerProjectsProjectIdRoute,
   FreelancerApplicationsIndexRoute: FreelancerApplicationsIndexRoute,
   FreelancerProjectsIndexRoute: FreelancerProjectsIndexRoute,
+  FreelancerProjectsProjectIdIndexRoute: FreelancerProjectsProjectIdIndexRoute,
+  FreelancerProjectsProjectIdDisputesDisputeIdRoute:
+    FreelancerProjectsProjectIdDisputesDisputeIdRoute,
+  FreelancerProjectsProjectIdMilestonesMilestoneIdRoute:
+    FreelancerProjectsProjectIdMilestonesMilestoneIdRoute,
+  FreelancerProjectsProjectIdDisputesIndexRoute:
+    FreelancerProjectsProjectIdDisputesIndexRoute,
+  FreelancerProjectsProjectIdMilestonesIndexRoute:
+    FreelancerProjectsProjectIdMilestonesIndexRoute,
 }
 
 const FreelancerRouteRouteWithChildren = FreelancerRouteRoute._addFileChildren(

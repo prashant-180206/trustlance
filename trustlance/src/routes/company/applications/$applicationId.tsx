@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 // import { useAuth } from "../../../contexts/auth.context";
 import { useCompanyApplications } from "../../../hooks/application.hooks";
 import { useAuth } from "../../../hooks/provider/AuthProvider";
+import { useUpdateApplicationStatus } from "../../../hooks/application.hooks";
+import { Button } from "../../-components";
 
 export const Route = createFileRoute(
   "/company/applications/$applicationId",
@@ -18,6 +20,7 @@ function CompanyApplication() {
     isLoading,
     error,
   } = useCompanyApplications(user?.id ?? "");
+  const updateStatus = useUpdateApplicationStatus();
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>{error.message}</div>;
@@ -49,7 +52,11 @@ function CompanyApplication() {
 
       <p>{application.proposal}</p>
 
-      {/* Accept / Reject actions go here */}
+      <div className="mt-4 flex gap-2">
+        <Button disabled={updateStatus.isPending} onClick={() => updateStatus.mutate({ applicationId, status: "accepted", companyId: user?.id })}>Accept</Button>
+        <Button disabled={updateStatus.isPending} onClick={() => updateStatus.mutate({ applicationId, status: "rejected", companyId: user?.id })}>Reject</Button>
+      </div>
+      {updateStatus.error && <p>{updateStatus.error.message}</p>}
     </div>
   );
 }

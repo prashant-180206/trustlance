@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAuth } from "../../../contexts/auth.context";
+import { useAuth } from "../../../hooks/provider/AuthProvider";
 import { useFreelancerApplications } from "../../../hooks/application.hooks";
 
 export const Route = createFileRoute(
