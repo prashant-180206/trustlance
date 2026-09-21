@@ -14,38 +14,50 @@ src/routes/
 │   ├── route.tsx
 │   ├── dashboard.tsx
 │   ├── profile.tsx
+│   │
 │   ├── projects/
 │   │   ├── index.tsx
-│   │   └── $projectId.tsx
-│   ├── applications/
-│   │   ├── index.tsx
-│   │   └── $applicationId.tsx
-│   ├── milestones/
-│   │   ├── index.tsx
-│   │   └── $milestoneId.tsx
-│   ├── disputes/
-│   │   ├── index.tsx
-│   │   └── $disputeId.tsx
-│   └── settings.tsx
+│   │   └── $projectId/
+│   │       ├── route.tsx
+│   │       ├── index.tsx
+│   │       ├── applications/
+│   │       │   ├── index.tsx
+│   │       │   └── $applicationId.tsx
+│   │       ├── milestones/
+│   │       │   ├── index.tsx
+│   │       │   └── $milestoneId.tsx
+│   │       └── disputes/
+│   │           ├── index.tsx
+│   │           └── $disputeId.tsx
+│   │
+│   └── applications/
+│       ├── index.tsx
+│       └── $applicationId.tsx
 │
 ├── company/
 │   ├── route.tsx
 │   ├── dashboard.tsx
 │   ├── profile.tsx
+│   │
 │   ├── projects/
 │   │   ├── index.tsx
 │   │   ├── new.tsx
-│   │   └── $projectId.tsx
-│   ├── applications/
-│   │   ├── index.tsx
-│   │   └── $applicationId.tsx
-│   ├── milestones/
-│   │   ├── index.tsx
-│   │   └── $milestoneId.tsx
-│   ├── disputes/
-│   │   ├── index.tsx
-│   │   └── $disputeId.tsx
-│   └── settings.tsx
+│   │   └── $projectId/
+│   │       ├── route.tsx
+│   │       ├── index.tsx
+│   │       ├── applications/
+│   │       │   ├── index.tsx
+│   │       │   └── $applicationId.tsx
+│   │       ├── milestones/
+│   │       │   ├── index.tsx
+│   │       │   └── $milestoneId.tsx
+│   │       └── disputes/
+│   │           ├── index.tsx
+│   │           └── $disputeId.tsx
+│   │
+│   └── applications/
+│       ├── index.tsx
+│       └── $applicationId.tsx
 │
 └── admin/
     ├── route.tsx
