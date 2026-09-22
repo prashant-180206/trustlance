@@ -1,68 +1,421 @@
-import { createFileRoute } from '@tanstack/react-router'
-// import { useProjectEscrow } from '../../../hooks/project.hooks'
-// import { useMilestone, useApproveMilestone, useRejectMilestone, useAutoApproveMilestone } from '../../../hooks/milestone.hooks'
-import { useProjectEscrow } from '../../../../../hooks/project.hooks'
-import { useAcceptRejection, useApproveMilestone, useAutoApproveMilestone, useMilestone, useRaiseDispute, useRejectMilestone, useWithdrawRejection } from '../../../../../hooks/milestone.hooks'
-import { Button, Shell } from '../../../../-components'
+import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/company/projects/$projectId/milestones/$milestoneId')({
+import { useProjectEscrow } from "../../../../../hooks/project.hooks";
+import {
+  useAcceptRejection,
+  useApproveMilestone,
+  useAutoApproveMilestone,
+  useMilestone,
+  useRaiseDispute,
+  useRejectMilestone,
+  useWithdrawRejection,
+} from "../../../../../hooks/milestone.hooks";
+
+import { mapMilestone } from "../../../../../lib/utils/milestone";
+import { MilestoneStatus } from "../../../../../lib/utils/milestone";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Shell } from "../../../../-components";
+
+export const Route = createFileRoute(
+  "/company/projects/$projectId/milestones/$milestoneId",
+)({
   component: CompanyMilestoneDetail,
-})
+});
 
-function CompanyMilestoneDetail() {
-  const { projectId, milestoneId } = Route.useParams()
-  const { data: projectAddress, isLoading: addressLoading } = useProjectEscrow(projectId)
-  const index = BigInt(milestoneId)
-  const { data: milestone, isLoading: milestoneLoading } = useMilestone(projectAddress, index)
-  const approve = useApproveMilestone()
-  const reject = useRejectMilestone()
-  const autoApprove = useAutoApproveMilestone()
-  const raiseDispute = useRaiseDispute()
-  const withdrawRejection = useWithdrawRejection()
-  const acceptRejection = useAcceptRejection()
+function formatEth(amount: bigint): string {
+  return `${Number(amount) / 1e18} ETH`;
+}
 
-  if (addressLoading || milestoneLoading) {
-    return <Shell title={`Milestone #${milestoneId}`} role="company"><p>Loading milestone...</p></Shell>
+function formatTimestamp(timestamp: bigint): string {
+  if (timestamp === 0n) {
+    return "Not set";
   }
 
+  return new Date(Number(timestamp) * 1000).toLocaleString();
+}
+
+function getStatusVariant(
+  status: MilestoneStatus,
+): "default" | "secondary" | "destructive" | "outline" {
+  switch (status) {
+    case MilestoneStatus.Approved:
+    case MilestoneStatus.Paid:
+      return "default";
+
+    case MilestoneStatus.Rejected:
+    case MilestoneStatus.Refunded:
+      return "destructive";
+
+    case MilestoneStatus.Disputed:
+      return "destructive";
+
+    case MilestoneStatus.Submitted:
+      return "secondary";
+
+    default:
+      return "outline";
+  }
+}
+
+function CompanyMilestoneDetail() {
+  const { projectId, milestoneId } = Route.useParams();
+
+  const {
+    data: projectAddress,
+    isLoading: addressLoading,
+    error: addressError,
+  } = useProjectEscrow(projectId);
+
+  const index = BigInt(milestoneId);
+
+  const {
+    data: milestoneTuple,
+    isLoading: milestoneLoading,
+    error: milestoneError,
+  } = useMilestone(projectAddress, index);
+
+  const approve = useApproveMilestone();
+  const reject = useRejectMilestone();
+  const autoApprove = useAutoApproveMilestone();
+  const raiseDispute = useRaiseDispute();
+  const withdrawRejection = useWithdrawRejection();
+  const acceptRejection = useAcceptRejection();
+
+  if (addressLoading || milestoneLoading) {
+    return (
+      <Shell
+        title={`Milestone #${milestoneId}`}
+        role="company"
+      >
+        <div className="space-y-6">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </Shell>
+    );
+  }
+
+  if (addressError || milestoneError) {
+    return (
+      <Shell
+        title={`Milestone #${milestoneId}`}
+        role="company"
+      >
+        <Alert variant="destructive">
+          <AlertDescription>
+            {addressError?.message ??
+              milestoneError?.message ??
+              "Failed to load milestone."}
+          </AlertDescription>
+        </Alert>
+      </Shell>
+    );
+  }
+
+  if (!milestoneTuple) {
+    return (
+      <Shell
+        title={`Milestone #${milestoneId}`}
+        role="company"
+      >
+        <Alert variant="destructive">
+          <AlertDescription>
+            Milestone not found.
+          </AlertDescription>
+        </Alert>
+      </Shell>
+    );
+  }
+
+  const milestone = mapMilestone(milestoneTuple);
+
+  const isPending = [
+    approve.isPending,
+    reject.isPending,
+    autoApprove.isPending,
+    raiseDispute.isPending,
+    withdrawRejection.isPending,
+    acceptRejection.isPending,
+  ].some(Boolean);
+
+  const runAction = (
+    action: {
+      mutate: (variables: {
+        projectAddress: `0x${string}`;
+        index: bigint;
+      }) => void;
+    },
+  ) => {
+    if (!projectAddress) return;
+
+    action.mutate({
+      projectAddress,
+      index,
+    });
+  };
+
   return (
-    <Shell title={`Manage milestone #${milestoneId}`} role="company">
+    <Shell
+      title={`Manage milestone #${milestoneId}`}
+      role="company"
+    >
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Milestone #{milestoneId}
+            </p>
 
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <span className="text-gray-500 text-sm block">Status</span>
-            <span className="font-bold">{milestone?.[2] || 'Unknown'}</span>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {milestone.description}
+            </h1>
           </div>
-          <div>
-            <span className="text-gray-500 text-sm block">Payment Amount</span>
-            <span className="font-bold">{milestone?.[1]?.toString() || '0'} ETH</span>
-          </div>
-          <div>
-            <span className="text-gray-500 text-sm block">Deliverable CID</span>
-            <span className="font-mono text-xs break-all block bg-white p-1 border rounded">
-              {milestone?.[5] || 'Not submitted'}
-            </span>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-3">
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={!projectAddress || approve.isPending} onClick={() => projectAddress && approve.mutate({ projectAddress, index })}>Approve</Button>
-          <Button disabled={!projectAddress || reject.isPending} onClick={() => projectAddress && reject.mutate({ projectAddress, index })}>Reject</Button>
-          <Button disabled={!projectAddress || autoApprove.isPending} onClick={() => projectAddress && autoApprove.mutate({ projectAddress, index })}>Auto approve</Button>
-          <Button disabled={!projectAddress || raiseDispute.isPending} onClick={() => projectAddress && raiseDispute.mutate({ projectAddress, index })}>Raise dispute</Button>
-          <Button disabled={!projectAddress || withdrawRejection.isPending} onClick={() => projectAddress && withdrawRejection.mutate({ projectAddress, index })}>Withdraw rejection</Button>
-          <Button disabled={!projectAddress || acceptRejection.isPending} onClick={() => projectAddress && acceptRejection.mutate({ projectAddress, index })}>Accept rejection</Button>
+          <Badge
+            variant={getStatusVariant(milestone.status)}
+            className="w-fit"
+          >
+            {Object.entries(MilestoneStatus).find(
+              ([, value]) => value === milestone.status,
+            )?.[0] ?? "Unknown"}
+          </Badge>
         </div>
 
-        {milestone?.[2] === 2 && (
-          <div className="p-4 bg-green-50 text-green-800 rounded-md border border-green-200 text-center font-medium">
-            Payment has been released for this milestone.
-          </div>
+        {/* Overview */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Milestone overview</CardTitle>
+            <CardDescription>
+              Payment and delivery information for this
+              milestone.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Payment amount
+                </p>
+
+                <p className="mt-1 text-lg font-semibold">
+                  {formatEth(milestone.amount)}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Status
+                </p>
+
+                <div className="mt-1">
+                  <Badge
+                    variant={getStatusVariant(
+                      milestone.status,
+                    )}
+                  >
+                    {Object.entries(MilestoneStatus).find(
+                      ([, value]) => value === milestone.status,
+                    )?.[0] ?? "Unknown"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Submitted at
+                </p>
+
+                <p className="mt-1 text-sm font-medium">
+                  {formatTimestamp(
+                    milestone.submittedAt,
+                  )}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Review deadline
+                </p>
+
+                <p className="mt-1 text-sm font-medium">
+                  {formatTimestamp(
+                    milestone.reviewDeadline,
+                  )}
+                </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <p className="text-sm text-muted-foreground">
+                  Dispute deadline
+                </p>
+
+                <p className="mt-1 text-sm font-medium">
+                  {formatTimestamp(
+                    milestone.disputeDeadline,
+                  )}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Deliverable */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Deliverable</CardTitle>
+            <CardDescription>
+              Content identifier submitted by the
+              freelancer.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            {milestone.deliverableCID ? (
+              <div className="rounded-md border bg-muted/50 p-4">
+                <p className="break-all font-mono text-xs">
+                  {milestone.deliverableCID}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No deliverable has been submitted yet.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Milestone actions</CardTitle>
+            <CardDescription>
+              Manage the current state of this milestone.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={!projectAddress || isPending}
+                onClick={() => runAction(approve)}
+              >
+                {approve.isPending
+                  ? "Approving..."
+                  : "Approve"}
+              </Button>
+
+              <Button
+                variant="destructive"
+                disabled={!projectAddress || isPending}
+                onClick={() => runAction(reject)}
+              >
+                {reject.isPending
+                  ? "Rejecting..."
+                  : "Reject"}
+              </Button>
+
+              <Button
+                variant="secondary"
+                disabled={!projectAddress || isPending}
+                onClick={() => runAction(autoApprove)}
+              >
+                {autoApprove.isPending
+                  ? "Approving..."
+                  : "Auto approve"}
+              </Button>
+
+              <Button
+                variant="outline"
+                disabled={!projectAddress || isPending}
+                onClick={() => runAction(raiseDispute)}
+              >
+                {raiseDispute.isPending
+                  ? "Raising..."
+                  : "Raise dispute"}
+              </Button>
+
+              <Button
+                variant="outline"
+                disabled={!projectAddress || isPending}
+                onClick={() =>
+                  runAction(withdrawRejection)
+                }
+              >
+                {withdrawRejection.isPending
+                  ? "Withdrawing..."
+                  : "Withdraw rejection"}
+              </Button>
+
+              <Button
+                variant="outline"
+                disabled={!projectAddress || isPending}
+                onClick={() =>
+                  runAction(acceptRejection)
+                }
+              >
+                {acceptRejection.isPending
+                  ? "Accepting..."
+                  : "Accept rejection"}
+              </Button>
+            </div>
+
+            {(approve.error ||
+              reject.error ||
+              autoApprove.error ||
+              raiseDispute.error ||
+              withdrawRejection.error ||
+              acceptRejection.error) && (
+                <>
+                  <Separator />
+
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      {approve.error?.message ??
+                        reject.error?.message ??
+                        autoApprove.error?.message ??
+                        raiseDispute.error?.message ??
+                        withdrawRejection.error
+                          ?.message ??
+                        acceptRejection.error
+                          ?.message}
+                    </AlertDescription>
+                  </Alert>
+                </>
+              )}
+          </CardContent>
+        </Card>
+
+        {/* Payment released */}
+        {milestone.status === MilestoneStatus.Approved && (
+          <Alert>
+            <AlertDescription>
+              Payment has been released for this milestone.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {milestone.status === MilestoneStatus.Paid && (
+          <Alert>
+            <AlertDescription>
+              This milestone has been paid successfully.
+            </AlertDescription>
+          </Alert>
         )}
       </div>
     </Shell>
-  )
+  );
 }

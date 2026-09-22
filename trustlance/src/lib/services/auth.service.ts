@@ -49,42 +49,6 @@ export class AuthService {
             throw profileError;
         }
 
-        /*
-         * 2. Create the account-specific profile.
-         */
-        if (accountType === "company") {
-            const { error: companyError } = await supabase
-                .from("company_profiles")
-                .upsert(
-                    {
-                        profile_id: user.id,
-                        company_name: "",
-                    },
-                    {
-                        onConflict: "profile_id",
-                    }
-                );
-
-            if (companyError) {
-                throw companyError;
-            }
-        } else {
-            const { error: freelancerError } = await supabase
-                .from("freelancer_profiles")
-                .upsert(
-                    {
-                        profile_id: user.id,
-                    },
-                    {
-                        onConflict: "profile_id",
-                    }
-                );
-
-            if (freelancerError) {
-                throw freelancerError;
-            }
-        }
-
         return {
             data,
             accountType,

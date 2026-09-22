@@ -1,10 +1,38 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import type { Address } from "viem";
-import { useFundProject } from "../../../../../hooks/project.hooks";
-import { Button, ErrorMessage, Field, Shell, Textarea } from "../../../../-components";
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+} from "@tanstack/react-router";
 
-export const Route = createFileRoute("/company/projects/$projectId/milestones/new")({
+import { useMemo, useState } from "react";
+import type { Address } from "viem";
+import { parseEther } from "viem";
+
+import { useFundProject } from "../../../../../hooks/project.hooks";
+
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+
+import { Shell } from "../../../../-components";
+
+export const Route = createFileRoute(
+  "/company/projects/$projectId/milestones/new",
+)({
   component: NewMilestones,
 });
 
@@ -16,71 +44,420 @@ type MilestoneDraft = {
 function NewMilestones() {
   const { projectId } = Route.useParams();
   const navigate = useNavigate();
+
   const fundProject = useFundProject();
-  const [freelancerWallet, setFreelancerWallet] = useState("");
-  const [milestones, setMilestones] = useState<MilestoneDraft[]>([
-    { amount: "", description: "" },
-  ]);
-  const [formError, setFormError] = useState<string | null>(null);
+
+  const [freelancerWallet, setFreelancerWallet] =
+    useState("");
+
+  const [milestones, setMilestones] =
+    useState<MilestoneDraft[]>([
+      {
+        amount: "",
+        description: "",
+      },
+    ]);
+
+  const [formError, setFormError] =
+    useState<string | null>(null);
+
+  const totalEth = useMemo(() => {
+    return milestones.reduce((total, milestone) => {
+      if (!milestone.amount) {
+        return total;
+      }
+
+      try {
+        return (
+          total + Number(milestone.amount)
+        );
+      } catch {
+        return total;
+      }
+    }, 0);
+  }, [milestones]);
 
   const updateMilestone = (
     index: number,
     field: keyof MilestoneDraft,
     value: string,
   ) => {
-    setMilestones((current) => current.map((milestone, milestoneIndex) => (
-      milestoneIndex === index ? { ...milestone, [field]: value } : milestone
-    )));
+    setMilestones((current) =>
+      current.map((milestone, milestoneIndex) =>
+        milestoneIndex === index
+          ? {
+              ...milestone,
+              [field]: value,
+            }
+          : milestone,
+      ),
+    );
   };
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const addMilestone = () => {
+    setMilestones((current) => [
+      ...current,
+      {
+        amount: "",
+        description: "",
+      },
+    ]);
+  };
+
+  const removeMilestone = (
+    index: number,
+  ) => {
+    setMilestones((current) =>
+      current.filter(
+        (_, milestoneIndex) =>
+          milestoneIndex !== index,
+      ),
+    );
+  };
+
+  const submit = (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
     setFormError(null);
 
-    if (!freelancerWallet.startsWith("0x")) {
-      setFormError("Enter the awarded freelancer wallet address.");
+    if (
+      !freelancerWallet.startsWith("0x") ||
+      freelancerWallet.length !== 42
+    ) {
+      setFormError(
+        "Enter a valid freelancer wallet address.",
+      );
       return;
     }
 
-    if (milestones.some(({ amount, description }) => !amount || !description.trim())) {
-      setFormError("Every milestone needs an amount and description.");
+    if (milestones.length === 0) {
+      setFormError(
+        "Add at least one milestone.",
+      );
+      return;
+    }
+
+    if (
+      milestones.some(
+        ({ amount, description }) =>
+          !amount ||
+          Number(amount) <= 0 ||
+          !description.trim(),
+      )
+    ) {
+      setFormError(
+        "Every milestone needs a valid amount and description.",
+      );
       return;
     }
 
     try {
-      fundProject.mutate({
-        projectId,
-        freelancerWallet: freelancerWallet as Address,
-        milestoneData: {
-          amounts: milestones.map(({ amount }) => BigInt(amount)),
-          descriptions: milestones.map(({ description }) => description.trim()),
+      const amounts = milestones.map(
+        ({ amount }) => parseEther(amount),
+      );
+
+      const descriptions = milestones.map(
+        ({ description }) =>
+          description.trim(),
+      );
+
+      fundProject.mutate(
+        {
+          projectId,
+          freelancerWallet:
+            freelancerWallet as Address,
+          milestoneData: {
+            amounts,
+            descriptions,
+          },
         },
-      }, {
-        onSuccess: () => navigate({ to: "/company/projects/$projectId/milestones", params: { projectId } }),
-      });
+        {
+          onSuccess: () => {
+            navigate({
+              to: "/company/projects/$projectId/milestones",
+              params: { projectId },
+            });
+          },
+        },
+      );
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Invalid milestone amount.");
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "Invalid milestone amount.",
+      );
     }
   };
 
   return (
-    <Shell title="Add milestones" role="company">
-      <form className="grid max-w-2xl gap-5" onSubmit={submit}>
-        <Field label="Freelancer wallet" value={freelancerWallet} onChange={(event) => setFreelancerWallet(event.target.value)} placeholder="0x..." required />
-        {milestones.map((milestone, index) => (
-          <fieldset key={index} className="grid gap-3 rounded border bg-white p-4">
-            <legend className="font-semibold">Milestone {index + 1}</legend>
-            <Field label="Amount in wei" type="number" min="1" value={milestone.amount} onChange={(event) => updateMilestone(index, "amount", event.target.value)} required />
-            <Textarea label="Description" value={milestone.description} onChange={(event) => updateMilestone(index, "description", event.target.value)} required />
-            {milestones.length > 1 && <Button type="button" onClick={() => setMilestones((current) => current.filter((_, milestoneIndex) => milestoneIndex !== index))}>Remove milestone</Button>}
-          </fieldset>
-        ))}
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" onClick={() => setMilestones((current) => [...current, { amount: "", description: "" }])}>Add another milestone</Button>
-          <Button type="submit" disabled={fundProject.isPending}>{fundProject.isPending ? "Funding..." : "Fund and award project"}</Button>
-          <Link to="/company/projects/$projectId/milestones" params={{ projectId }} className="rounded border px-3 py-2 text-sm">Cancel</Link>
+    <Shell
+      title="Add milestones"
+      role="company"
+    >
+      <form
+        onSubmit={submit}
+        className="max-w-3xl space-y-6"
+      >
+
+        {/* Header */}
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">
+            Define project milestones
+          </h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Set the freelancer, deliverables, and
+            payment amounts before funding the project.
+          </p>
         </div>
-        <ErrorMessage error={formError ? new Error(formError) : fundProject.error} />
+
+        {/* Freelancer */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Freelancer
+            </CardTitle>
+
+            <CardDescription>
+              The wallet address that will receive
+              this project.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="freelancer-wallet">
+                Wallet address
+              </Label>
+
+              <Input
+                id="freelancer-wallet"
+                value={freelancerWallet}
+                onChange={(event) =>
+                  setFreelancerWallet(
+                    event.target.value,
+                  )
+                }
+                placeholder="0x..."
+                className="font-mono"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Milestones */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base">
+                  Payment milestones
+                </CardTitle>
+
+                <CardDescription>
+                  Define each deliverable and its
+                  payment.
+                </CardDescription>
+              </div>
+
+              <Badge variant="secondary">
+                {milestones.length}{" "}
+                {milestones.length === 1
+                  ? "milestone"
+                  : "milestones"}
+              </Badge>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-5">
+            {milestones.map(
+              (milestone, index) => (
+                <div
+                  key={index}
+                  className="rounded-lg border p-5"
+                >
+                  <div className="mb-5 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Milestone {index + 1}
+                      </p>
+
+                      <p className="mt-1 font-medium">
+                        Payment & deliverable
+                      </p>
+                    </div>
+
+                    {milestones.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          removeMilestone(index)
+                        }
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid gap-5">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor={`amount-${index}`}
+                      >
+                        Payment amount
+                      </Label>
+
+                      <div className="relative">
+                        <Input
+                          id={`amount-${index}`}
+                          type="number"
+                          min="0"
+                          step="0.0001"
+                          value={milestone.amount}
+                          onChange={(event) =>
+                            updateMilestone(
+                              index,
+                              "amount",
+                              event.target.value,
+                            )
+                          }
+                          placeholder="0.5"
+                          className="pr-14"
+                        />
+
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                          ETH
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor={`description-${index}`}
+                      >
+                        Deliverable
+                      </Label>
+
+                      <Textarea
+                        id={`description-${index}`}
+                        value={
+                          milestone.description
+                        }
+                        onChange={(event) =>
+                          updateMilestone(
+                            index,
+                            "description",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Describe what the freelancer needs to deliver..."
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ),
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addMilestone}
+              className="w-full"
+            >
+              + Add another milestone
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Funding summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Funding summary
+            </CardTitle>
+
+            <CardDescription>
+              Review the amount that will be funded
+              into escrow.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                Milestones
+              </span>
+
+              <span className="font-medium">
+                {milestones.length}
+              </span>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <span className="font-medium">
+                Total escrow
+              </span>
+
+              <span className="text-xl font-semibold">
+                {totalEth.toLocaleString(
+                  undefined,
+                  {
+                    maximumFractionDigits: 4,
+                  },
+                )}{" "}
+                ETH
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Error */}
+        {formError && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              {formError}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {fundProject.error && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              {fundProject.error.message}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Actions */}
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            
+          >
+            <Link
+              to="/company/projects/$projectId/milestones"
+              params={{ projectId }}
+            >
+              Cancel
+            </Link>
+          </Button>
+
+          <Button
+            type="submit"
+            disabled={fundProject.isPending}
+          >
+            {fundProject.isPending
+              ? "Funding project..."
+              : "Fund & award project"}
+          </Button>
+        </div>
       </form>
     </Shell>
   );

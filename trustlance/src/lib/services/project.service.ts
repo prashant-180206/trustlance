@@ -31,11 +31,21 @@ export class ProjectService {
         companyId: string,
         projectData: CreateProjectData,
     ): Promise<Project> {
+        // --------------------------------------------------------
+        // 1. Create blockchain escrow FIRST
+        // --------------------------------------------------------
+        let escrowAddress: Address;
+
+        try {
+            escrowAddress = await blockchainService.createEscrow();
+        } catch (error) {
+            // Blockchain failed → don't touch the database
+            throw error;
+        }
 
         // --------------------------------------------------------
-        // 1. Create project in Supabase
+        // 2. Blockchain succeeded → create project in Supabase
         // --------------------------------------------------------
-
         const {
             data: project,
             error,
@@ -44,6 +54,7 @@ export class ProjectService {
             .insert({
                 company_id: companyId,
                 ...projectData,
+                escrow_address: escrowAddress,
                 status: "open",
             })
             .select()
@@ -53,55 +64,7 @@ export class ProjectService {
             throw error;
         }
 
-        // --------------------------------------------------------
-        // 2. Create blockchain escrow
-        // --------------------------------------------------------
-
-        try {
-
-            const escrowAddress =
-                await blockchainService.createEscrow();
-
-            // ----------------------------------------------------
-            // 3. Save escrow address
-            // ----------------------------------------------------
-
-            const {
-                data: updatedProject,
-                error: updateError,
-            } = await supabase
-                .from("projects")
-                .update({
-                    escrow_address: escrowAddress,
-                })
-                .eq("id", project.id)
-                .select()
-                .single();
-
-            if (updateError) {
-                throw updateError;
-            }
-
-            return updatedProject;
-
-        } catch (error) {
-
-            // ----------------------------------------------------
-            // Blockchain creation failed.
-            //
-            // The Supabase project already exists, so don't delete
-            // it silently. Mark it so the UI can handle recovery.
-            // ----------------------------------------------------
-
-            await supabase
-                .from("projects")
-                .update({
-                    status: "cancelled",
-                })
-                .eq("id", project.id);
-
-            throw error;
-        }
+        return project;
     }
 
 
@@ -161,6 +124,33 @@ export class ProjectService {
         }
 
         return data || [];
+    }
+
+    // GET PROJECT FREELANCER
+    async getProjectFreelancer(projectId: string) {
+        const { data, error } = await supabase
+            .from("applications")
+            .select(`
+            freelancer_id,
+            freelancer_profiles!inner(
+                profile_id,
+                headline,
+                profiles!inner(
+                    wallet_address,
+                    display_name,
+                    avatar_url
+                )
+            )
+        `)
+            .eq("project_id", projectId)
+            .eq("status", "accepted")
+            .maybeSingle();
+
+        if (error) {
+            throw error;
+        }
+
+        return data;
     }
 
 

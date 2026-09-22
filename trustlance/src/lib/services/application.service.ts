@@ -1,3 +1,4 @@
+import type { FreelancerApplication } from "@/hooks/application.hooks";
 import { supabase } from "../supabase/client";
 import type { Tables } from "../supabase/types";
 
@@ -52,12 +53,8 @@ export class ApplicationService {
 
     async getFreelancerApplications(
         freelancerId: string,
-    ): Promise<Application[]> {
-
-        const {
-            data,
-            error,
-        } = await supabase
+    ): Promise<FreelancerApplication[]> {
+        const { data, error } = await supabase
             .from("applications")
             .select("*, projects(title, budget)")
             .eq("freelancer_id", freelancerId)
@@ -115,9 +112,11 @@ export class ApplicationService {
             error,
         } = await supabase
             .from("applications")
+
             .select(
-                "*, projects!inner(company_id, title), freelancer_profiles(headline)",
+                "*, projects!inner(company_id, title, budget), freelancer_profiles(headline)"
             )
+
             .eq("projects.company_id", companyId)
             .order("created_at", {
                 ascending: false,
@@ -139,6 +138,20 @@ export class ApplicationService {
         applicationId: string,
         status: Application["status"],
     ): Promise<Application> {
+        if (status === "accepted") {
+            const { data, error } = await supabase.rpc(
+                "accept_application",
+                {
+                    p_application_id: applicationId,
+                },
+            );
+
+            if (error) {
+                throw error;
+            }
+
+            return data;
+        }
 
         const {
             data,
@@ -147,6 +160,7 @@ export class ApplicationService {
             .from("applications")
             .update({
                 status,
+                updated_at: new Date().toISOString(),
             })
             .eq("id", applicationId)
             .select()

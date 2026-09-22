@@ -14,6 +14,12 @@ import type { Tables } from "../lib/supabase/types";
 
 type Application = Tables<"applications">;
 
+export type FreelancerApplication = Application & {
+    projects: {
+        title: string;
+        budget: number | null;
+    } | null;
+};
 
 // ============================================================
 // QUERY KEYS
@@ -23,25 +29,13 @@ export const applicationKeys = {
     all: ["applications"] as const,
 
     freelancer: (freelancerId: string) =>
-        [
-            ...applicationKeys.all,
-            "freelancer",
-            freelancerId,
-        ] as const,
+        [...applicationKeys.all, "freelancer", freelancerId] as const,
 
     project: (projectId: string) =>
-        [
-            ...applicationKeys.all,
-            "project",
-            projectId,
-        ] as const,
+        [...applicationKeys.all, "project", projectId] as const,
 
     company: (companyId: string) =>
-        [
-            ...applicationKeys.all,
-            "company",
-            companyId,
-        ] as const,
+        [...applicationKeys.all, "company", companyId] as const,
 };
 
 
@@ -51,18 +45,12 @@ export const applicationKeys = {
 
 export function useFreelancerApplications(
     freelancerId: string,
-): UseQueryResult<Application[], Error> {
+): UseQueryResult<FreelancerApplication[], Error> {
     return useQuery({
-        queryKey:
-            applicationKeys.freelancer(
-                freelancerId,
-            ),
+        queryKey: applicationKeys.freelancer(freelancerId),
 
         queryFn: () =>
-            applicationService
-                .getFreelancerApplications(
-                    freelancerId,
-                ),
+            applicationService.getFreelancerApplications(freelancerId),
 
         enabled: !!freelancerId,
     });
@@ -97,25 +85,32 @@ export function useProjectApplications(
 // GET COMPANY APPLICATIONS
 // ============================================================
 
+export type CompanyApplication = Application & {
+    projects: {
+        company_id: string;
+        title: string;
+        budget: number | null;
+    } | null;
+
+    freelancer_profiles: {
+        headline: string | null;
+    } | null;
+};
+
 export function useCompanyApplications(
     companyId: string,
-): UseQueryResult<Application[], Error> {
+): UseQueryResult<CompanyApplication[], Error> {
     return useQuery({
-        queryKey:
-            applicationKeys.company(
-                companyId,
-            ),
+        queryKey: applicationKeys.company(companyId),
 
         queryFn: () =>
-            applicationService
-                .getApplicationsForCompany(
-                    companyId,
-                ),
+            applicationService.getApplicationsForCompany(
+                companyId,
+            ),
 
         enabled: !!companyId,
     });
 }
-
 
 // ============================================================
 // APPLY TO PROJECT

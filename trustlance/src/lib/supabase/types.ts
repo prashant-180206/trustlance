@@ -326,7 +326,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_application: {
+        Args: { p_application_id: string }
+        Returns: {
+          created_at: string
+          freelancer_id: string
+          id: string
+          project_id: string
+          proposal: string | null
+          proposed_amount: number | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       account_type: "freelancer" | "company"

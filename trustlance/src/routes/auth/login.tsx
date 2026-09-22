@@ -2,9 +2,28 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import {
+    ArrowLeft,
+    ArrowRight,
+    BriefcaseBusiness,
+    Building2,
+    Check,
+    Loader2,
+    Wallet,
+} from "lucide-react";
+
 import { useAuth } from "../../hooks/provider/AuthProvider";
 
-// import { useAuth } from "../../contexts/AuthContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 
 export const Route = createFileRoute("/auth/login")({
     component: LoginPage,
@@ -31,122 +50,187 @@ function LoginPage() {
         },
     });
 
+    const isPending = signInMutation.isPending;
+
     return (
-        <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-6">
+        <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-muted/30 px-6 py-12">
+            {/* Background */}
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(to_right,hsl(var(--border))_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border))_1px,transparent_1px)] bg-size-[4rem_4rem] opacity-30 mask-[radial-gradient(ellipse_at_center,black_20%,transparent_75%)]" />
+
             <div className="w-full max-w-md">
-                {/* Logo / Heading */}
-                <div className="mb-10 text-center">
+                {/* Header */}
+                <div className="mb-8 text-center">
                     <Link
                         to="/"
-                        className="text-xl font-bold tracking-tight text-zinc-950"
+                        className="inline-block text-xl font-semibold tracking-tight"
                     >
                         TrustLance
                     </Link>
 
-                    <h1 className="mt-8 text-3xl font-bold tracking-tight text-zinc-950">
-                        Welcome to TrustLance
-                    </h1>
+                    <div className="mt-8">
+                        <Badge variant="secondary" className="mb-4">
+                            <Wallet className="mr-2 h-3.5 w-3.5" />
+                            Wallet authentication
+                        </Badge>
 
-                    <p className="mt-2 text-sm leading-6 text-zinc-500">
-                        Connect your wallet to continue.
-                    </p>
+                        <h1 className="text-3xl font-bold tracking-tight">
+                            Welcome to TrustLance
+                        </h1>
+
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                            Connect your wallet to access your account.
+                        </p>
+                    </div>
                 </div>
 
                 {/* Authentication Card */}
-                <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-                    {/* Account Type */}
-                    <div>
-                        <h2 className="text-sm font-semibold text-zinc-900">
-                            Continue as
-                        </h2>
+                <Card className="shadow-sm">
+                    <CardHeader>
+                        <CardTitle>Choose your account</CardTitle>
+                        <CardDescription>
+                            Select how you want to use TrustLance.
+                        </CardDescription>
+                    </CardHeader>
 
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                            <button
-                                type="button"
+                    <CardContent className="space-y-6">
+                        {/* Account Type */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <AccountTypeButton
+                                selected={accountType === "freelancer"}
+                                disabled={isPending}
+                                icon={<BriefcaseBusiness className="h-5 w-5" />}
+                                title="Freelancer"
+                                description="Find and work on projects"
                                 onClick={() => setAccountType("freelancer")}
-                                disabled={signInMutation.isPending}
-                                className={`rounded-xl border px-4 py-4 text-left transition ${accountType === "freelancer"
-                                        ? "border-zinc-950 bg-zinc-950 text-white"
-                                        : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400"
-                                    }`}
-                            >
-                                <div className="text-sm font-semibold">
-                                    Freelancer
-                                </div>
+                            />
 
-                                <div
-                                    className={`mt-1 text-xs ${accountType === "freelancer"
-                                            ? "text-zinc-300"
-                                            : "text-zinc-500"
-                                        }`}
-                                >
-                                    Find and work on projects
-                                </div>
-                            </button>
-
-                            <button
-                                type="button"
+                            <AccountTypeButton
+                                selected={accountType === "company"}
+                                disabled={isPending}
+                                icon={<Building2 className="h-5 w-5" />}
+                                title="Company"
+                                description="Hire trusted freelancers"
                                 onClick={() => setAccountType("company")}
-                                disabled={signInMutation.isPending}
-                                className={`rounded-xl border px-4 py-4 text-left transition ${accountType === "company"
-                                        ? "border-zinc-950 bg-zinc-950 text-white"
-                                        : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400"
-                                    }`}
-                            >
-                                <div className="text-sm font-semibold">
-                                    Company
-                                </div>
-
-                                <div
-                                    className={`mt-1 text-xs ${accountType === "company"
-                                            ? "text-zinc-300"
-                                            : "text-zinc-500"
-                                        }`}
-                                >
-                                    Hire trusted freelancers
-                                </div>
-                            </button>
+                            />
                         </div>
-                    </div>
 
-                    {/* Connect Wallet */}
-                    <button
-                        type="button"
-                        onClick={() => signInMutation.mutate()}
-                        disabled={signInMutation.isPending}
-                        className="mt-6 w-full rounded-xl bg-zinc-950 px-4 py-3.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        {signInMutation.isPending
-                            ? "Connecting..."
-                            : "Connect Wallet"}
-                    </button>
+                        {/* Connect Wallet */}
+                        <Button
+                            type="button"
+                            size="lg"
+                            className="w-full"
+                            disabled={isPending}
+                            onClick={() => signInMutation.mutate()}
+                        >
+                            {isPending ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Connecting...
+                                </>
+                            ) : (
+                                <>
+                                    <Wallet className="mr-2 h-4 w-4" />
+                                    Connect Wallet
+                                    <ArrowRight className="ml-auto h-4 w-4" />
+                                </>
+                            )}
+                        </Button>
 
-                    {/* Error */}
-                    {signInMutation.isError && (
-                        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                            {signInMutation.error instanceof Error
-                                ? signInMutation.error.message
-                                : "Failed to connect wallet."}
-                        </div>
-                    )}
+                        {/* Error */}
+                        {signInMutation.isError && (
+                            <Alert variant="destructive">
+                                <AlertDescription>
+                                    {signInMutation.error instanceof Error
+                                        ? signInMutation.error.message
+                                        : "Failed to connect wallet."}
+                                </AlertDescription>
+                            </Alert>
+                        )}
 
-                    <p className="mt-5 text-center text-xs leading-5 text-zinc-400">
-                        By connecting your wallet, you agree to use TrustLance
-                        according to its platform rules.
-                    </p>
-                </div>
+                        {/* Terms */}
+                        <p className="text-center text-xs leading-5 text-muted-foreground">
+                            By connecting your wallet, you agree to use TrustLance
+                            according to its platform rules.
+                        </p>
+                    </CardContent>
+                </Card>
 
                 {/* Back */}
                 <div className="mt-6 text-center">
-                    <Link
-                        to="/"
-                        className="text-sm text-zinc-500 transition hover:text-zinc-950"
-                    >
-                        ← Back to home
-                    </Link>
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        <Link to="/">
+                            Back to home
+                        </Link>
+                    </Button>
                 </div>
             </div>
         </main>
+    );
+}
+
+type AccountTypeButtonProps = {
+    selected: boolean;
+    disabled: boolean;
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    onClick: () => void;
+};
+
+function AccountTypeButton({
+    selected,
+    disabled,
+    icon,
+    title,
+    description,
+    onClick,
+}: AccountTypeButtonProps) {
+    return (
+        <button
+            type="button"
+            disabled={disabled}
+            onClick={onClick}
+            className={[
+                "relative flex min-h-32 flex-col rounded-lg border p-4 text-left",
+                "transition-all duration-200",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                selected
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "bg-background hover:border-primary/50 hover:bg-muted/50",
+            ].join(" ")}
+        >
+            {/* Selected indicator */}
+            {selected && (
+                <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary-foreground text-primary">
+                    <Check className="h-3.5 w-3.5" />
+                </div>
+            )}
+
+            <div
+                className={[
+                    "mb-4 flex h-9 w-9 items-center justify-center rounded-md",
+                    selected
+                        ? "bg-primary-foreground/10"
+                        : "bg-muted",
+                ].join(" ")}
+            >
+                {icon}
+            </div>
+
+            <span className="text-sm font-semibold">{title}</span>
+
+            <span
+                className={[
+                    "mt-1 text-xs leading-5",
+                    selected
+                        ? "text-primary-foreground/70"
+                        : "text-muted-foreground",
+                ].join(" ")}
+            >
+                {description}
+            </span>
+        </button>
     );
 }
 

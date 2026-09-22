@@ -1,70 +1,408 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useProjectEscrow } from '../../../../../hooks/project.hooks'
-import { useMilestone, useAutoResolveDispute } from '../../../../../hooks/milestone.hooks'
-import { Button, ErrorMessage, Shell } from '../../../../-components'
+import {
+  createFileRoute,
+  Link,
+} from "@tanstack/react-router";
 
-export const Route = createFileRoute('/company/projects/$projectId/disputes/$disputeId')({
+import {
+  useAutoResolveDispute,
+  useMilestone,
+} from "../../../../../hooks/milestone.hooks";
+import {
+  useProjectEscrow,
+} from "../../../../../hooks/project.hooks";
+
+import {
+  getMilestoneStatusLabel,
+  mapMilestone,
+  MilestoneStatus,
+} from "../../../../../lib/utils/milestone";
+
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+
+import { Shell } from "../../../../-components";
+
+export const Route = createFileRoute(
+  "/company/projects/$projectId/disputes/$disputeId",
+)({
   component: CompanyDisputeDetail,
-})
+});
 
-function CompanyDisputeDetail() {
-  const { projectId, disputeId } = Route.useParams()
-  const { data: projectAddress, isLoading: addressLoading } = useProjectEscrow(projectId)
-  const { data: milestone, isLoading: milestoneLoading } = useMilestone(projectAddress, BigInt(disputeId))
-  const { mutateAsync: resolveDispute, isPending: isResolving, error: resolveDisputeError } = useAutoResolveDispute()
+function formatEth(amount: bigint) {
+  return `${(
+    Number(amount) / 1e18
+  ).toLocaleString(undefined, {
+    maximumFractionDigits: 4,
+  })} ETH`;
+}
 
-  if (addressLoading || milestoneLoading) {
-    return <Shell title="Dispute" role="company"><p>Loading dispute details...</p></Shell>
+function formatTimestamp(
+  timestamp: bigint,
+) {
+  if (timestamp === 0n) {
+    return "Not available";
   }
 
-  const handleResolve = async () => {
-    try {
-      await resolveDispute({
-        projectAddress: projectAddress!,
-        index: BigInt(disputeId),
-      })
-      alert('Dispute resolved successfully!')
-    } catch (e) {
-      alert('Resolution failed: ' + (e as Error).message)
-    }
+  return new Date(
+    Number(timestamp) * 1000,
+  ).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function CompanyDisputeDetail() {
+  const {
+    projectId,
+    disputeId,
+  } = Route.useParams();
+
+  const index = BigInt(disputeId);
+
+  const {
+    data: projectAddress,
+    isLoading: addressLoading,
+    error: addressError,
+  } = useProjectEscrow(projectId);
+
+  const {
+    data,
+    isLoading: milestoneLoading,
+    error: milestoneError,
+  } = useMilestone(
+    projectAddress,
+    index,
+  );
+
+  const resolve =
+    useAutoResolveDispute();
+
+  const milestone = data
+    ? mapMilestone(data)
+    : null;
+
+  const isLoading =
+    addressLoading || milestoneLoading;
+
+  const isDisputed =
+    milestone?.status ===
+    MilestoneStatus.Disputed;
+
+  if (isLoading) {
+    return (
+      <Shell
+        title="Dispute"
+        role="company"
+      >
+        <div className="max-w-3xl">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </CardHeader>
+
+            <CardContent className="space-y-5">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (!milestone) {
+    return (
+      <Shell
+        title={`Dispute #${disputeId}`}
+        role="company"
+      >
+        <Alert variant="destructive">
+          <AlertDescription>
+            {addressError?.message ??
+              milestoneError?.message ??
+              "Milestone not found."}
+          </AlertDescription>
+        </Alert>
+      </Shell>
+    );
   }
 
   return (
-    <Shell title={`Resolve dispute #${disputeId}`} role="company">
-      
-      <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <span className="text-gray-500 text-sm block">Milestone Index</span>
-            <span className="font-bold">{disputeId}</span>
+    <Shell
+      title={`Dispute #${disputeId}`}
+      role="company"
+    >
+      <div className="max-w-3xl space-y-6">
+
+        {/* Header */}
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Milestone {Number(disputeId) + 1}
+            </h2>
+
+            <Badge
+              variant={
+                isDisputed
+                  ? "destructive"
+                  : "outline"
+              }
+            >
+              {getMilestoneStatusLabel(
+                milestone.status,
+              )}
+            </Badge>
           </div>
-          <div>
-            <span className="text-gray-500 text-sm block">Locked Funds</span>
-            <span className="font-bold">{milestone?.[1]?.toString()} ETH</span>
-          </div>
-          <div className="col-span-2">
-            <span className="text-gray-500 text-sm block">Deliverable CID</span>
-            <span className="font-mono text-xs break-all block bg-white p-1 border rounded">
-              {milestone?.[5] || 'No CID provided'}
-            </span>
-          </div>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review the disputed milestone and execute
+            the available resolution.
+          </p>
+        </div>
+
+        {/* Status alert */}
+        {isDisputed ? (
+          <Alert variant="destructive">
+            <AlertDescription>
+              This milestone is currently disputed.
+              Its payment remains subject to the
+              dispute resolution process.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert>
+            <AlertDescription>
+              This milestone is no longer in the
+              disputed state.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Milestone details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Milestone details
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+
+            <div>
+              <p className="text-xs text-muted-foreground">
+                Description
+              </p>
+
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
+                {milestone.description}
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Locked funds
+                </p>
+
+                <p className="mt-1 text-lg font-semibold">
+                  {formatEth(
+                    milestone.amount,
+                  )}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Milestone status
+                </p>
+
+                <div className="mt-2">
+                  <Badge
+                    variant={
+                      isDisputed
+                        ? "destructive"
+                        : "outline"
+                    }
+                  >
+                    {getMilestoneStatusLabel(
+                      milestone.status,
+                    )}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <p className="text-xs text-muted-foreground">
+                Deliverable CID
+              </p>
+
+              {milestone.deliverableCID ? (
+                <p className="mt-2 break-all rounded-md bg-muted p-3 font-mono text-xs">
+                  {milestone.deliverableCID}
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No deliverable has been submitted.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Timeline */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Timeline
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <p className="text-sm font-medium">
+                  Submitted
+                </p>
+
+                <p className="text-xs text-muted-foreground">
+                  Freelancer submission time.
+                </p>
+              </div>
+
+              <p className="text-right text-sm text-muted-foreground">
+                {formatTimestamp(
+                  milestone.submittedAt,
+                )}
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <p className="text-sm font-medium">
+                  Review deadline
+                </p>
+
+                <p className="text-xs text-muted-foreground">
+                  End of the review period.
+                </p>
+              </div>
+
+              <p className="text-right text-sm text-muted-foreground">
+                {formatTimestamp(
+                  milestone.reviewDeadline,
+                )}
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <p className="text-sm font-medium">
+                  Dispute deadline
+                </p>
+
+                <p className="text-xs text-muted-foreground">
+                  Resolution deadline.
+                </p>
+              </div>
+
+              <p className="text-right text-sm text-muted-foreground">
+                {formatTimestamp(
+                  milestone.disputeDeadline,
+                )}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Resolution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Resolution
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Execute the smart contract's automatic
+              dispute resolution for this milestone.
+            </p>
+
+            {resolve.error && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {resolve.error.message}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Button
+              disabled={
+                !projectAddress ||
+                !isDisputed ||
+                resolve.isPending
+              }
+              onClick={() => {
+                if (!projectAddress) {
+                  return;
+                }
+
+                resolve.mutate({
+                  projectAddress,
+                  index,
+                });
+              }}
+            >
+              {resolve.isPending
+                ? "Resolving dispute..."
+                : "Execute resolution"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Milestone link */}
+        <div>
+          <Button
+            variant="outline"
+          >
+            <Link
+              to="/company/projects/$projectId/milestones/$milestoneId"
+              params={{
+                projectId,
+                milestoneId: disputeId,
+              }}
+            >
+              Open milestone actions
+            </Link>
+          </Button>
         </div>
       </div>
-
-      <div className="flex flex-col gap-4">
-        <p className="text-gray-600 text-sm">
-          Resolving the dispute typically involves utilizing the DAO or an arbitrator. 
-          For this prototype, the "Auto-Resolve" function simulates a resolution decision.
-        </p>
-        <Button
-          onClick={handleResolve}
-          disabled={isResolving}
-        >
-          {isResolving ? 'Resolving...' : 'Execute Resolution Decision'}
-        </Button>
-        <ErrorMessage error={resolveDisputeError} />
-        <Link to="/company/projects/$projectId/milestones/$milestoneId" params={{ projectId, milestoneId: disputeId }} className="text-sm underline">Open milestone actions</Link>
-      </div>
     </Shell>
-  )
+  );
 }

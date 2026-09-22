@@ -25,7 +25,7 @@ type Project = Tables<"projects">;
 
 export const projectKeys = {
     all: ["projects"] as const,
-    
+
     lists: () =>
         [...projectKeys.all, "list"] as const,
 
@@ -183,6 +183,37 @@ export function useCreateProject(): UseMutationResult<
                 project,
             );
         },
+    });
+}
+
+// GET PROJECT FREELANCER
+type ProjectFreelancer = Awaited<
+    ReturnType<typeof projectService.getProjectFreelancer>
+>;
+
+export const projectFreelancerKeys = {
+    all: ["project-freelancer"] as const,
+
+    detail: (projectId: string) =>
+        [
+            ...projectFreelancerKeys.all,
+            projectId,
+        ] as const,
+};
+
+export function useProjectFreelancer(
+    projectId: string,
+): UseQueryResult<ProjectFreelancer, Error> {
+    return useQuery({
+        queryKey:
+            projectFreelancerKeys.detail(projectId),
+
+        queryFn: () =>
+            projectService.getProjectFreelancer(
+                projectId,
+            ),
+
+        enabled: !!projectId,
     });
 }
 
