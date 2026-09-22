@@ -126,14 +126,8 @@ export class ProjectService {
     }
 
 
-    async getProjectById(
-        projectId: string,
-    ): Promise<Project> {
-
-        const {
-            data,
-            error,
-        } = await supabase
+    async getProjectById(projectId: string): Promise<Project> {
+        const { data, error } = await supabase
             .from("projects")
             .select("*, company_profiles(company_name)")
             .eq("id", projectId)

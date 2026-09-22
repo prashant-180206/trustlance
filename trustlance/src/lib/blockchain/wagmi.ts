@@ -1,18 +1,53 @@
 // src/lib/wagmi.ts
 
-import { createConfig, http } from "wagmi";
-import { hardhat } from "wagmi/chains";
-import { createPublicClient } from "viem";
+import {
+    createConfig,
+    http,
+} from "wagmi";
 
-export const config = createConfig({
-    chains: [hardhat],
+import {
+    createPublicClient,
+    defineChain,
+} from "viem";
 
-    transports: {
-        [hardhat.id]: http("http://127.0.0.1:8545"),
-    },
-});
 
-export const publicClient = createPublicClient({
-    chain: hardhat,
-    transport: http("http://127.0.0.1:8545"),
-});
+export const hardhatLocal =
+    defineChain({
+        id: 31337,
+        name: "Hardhat Local",
+
+        nativeCurrency: {
+            name: "Ether",
+            symbol: "ETH",
+            decimals: 18,
+        },
+
+        rpcUrls: {
+            default: {
+                http: [
+                    "http://127.0.0.1:8545",
+                ],
+            },
+        },
+    });
+
+
+export const config =
+    createConfig({
+        chains: [
+            hardhatLocal,
+        ],
+
+        transports: {
+            [hardhatLocal.id]:
+                http("http://127.0.0.1:8545"),
+        },
+    });
+
+export const publicClient =
+    createPublicClient({
+        chain: hardhatLocal,
+        transport: http(
+            "http://127.0.0.1:8545",
+        ),
+    });

@@ -17,15 +17,21 @@ export class AuthService {
         const user = data.user;
 
         if (!user) {
-            throw new Error("Wallet authentication succeeded but no user was returned.");
+            throw new Error(
+                "Wallet authentication succeeded but no user was returned."
+            );
         }
 
-        const walletAddress = data.user.user_metadata?.custom_claims?.address;
+        const walletAddress =
+            user.user_metadata?.custom_claims?.address;
 
         if (!walletAddress) {
             throw new Error("Wallet address not found.");
         }
 
+        /*
+         * 1. Create/update the base profile.
+         */
         const { error: profileError } = await supabase
             .from("profiles")
             .upsert(
@@ -43,8 +49,45 @@ export class AuthService {
             throw profileError;
         }
 
+        /*
+         * 2. Create the account-specific profile.
+         */
+        if (accountType === "company") {
+            const { error: companyError } = await supabase
+                .from("company_profiles")
+                .upsert(
+                    {
+                        profile_id: user.id,
+                        company_name: "",
+                    },
+                    {
+                        onConflict: "profile_id",
+                    }
+                );
+
+            if (companyError) {
+                throw companyError;
+            }
+        } else {
+            const { error: freelancerError } = await supabase
+                .from("freelancer_profiles")
+                .upsert(
+                    {
+                        profile_id: user.id,
+                    },
+                    {
+                        onConflict: "profile_id",
+                    }
+                );
+
+            if (freelancerError) {
+                throw freelancerError;
+            }
+        }
+
         return {
-            data, accountType
+            data,
+            accountType,
         };
     }
 

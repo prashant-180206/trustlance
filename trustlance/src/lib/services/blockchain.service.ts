@@ -3,6 +3,7 @@
 import type {
     Address,
     Hash,
+    TransactionReceipt,
 } from "viem";
 
 import {
@@ -13,10 +14,10 @@ import {
     getWalletClient,
 } from "wagmi/actions";
 
-import {
-    config,
-    publicClient,
-} from "../blockchain/wagmi";
+// import {
+//     config,
+//     publicClient,
+// } from "../lib/blockchain/wagmi";
 
 import {
     FACTORY_ADDRESS,
@@ -29,6 +30,7 @@ import {
 import {
     TrustLanceEscrowABI,
 } from "../blockchain/abis/TrustLanceEscrow";
+import { config, hardhatLocal, publicClient } from "../blockchain/wagmi";
 
 
 export class BlockchainService {
@@ -51,6 +53,7 @@ export class BlockchainService {
         return walletClient;
     }
 
+
     async getConnectedAddress(): Promise<Address> {
         const walletClient = await this.getWalletClient();
 
@@ -64,7 +67,8 @@ export class BlockchainService {
 
     async waitForTransaction(
         hash: Hash,
-    ) {
+    ): Promise<TransactionReceipt> {
+
         return publicClient.waitForTransactionReceipt({
             hash,
         });
@@ -77,32 +81,48 @@ export class BlockchainService {
 
     async createEscrow(): Promise<Address> {
 
-        const walletClient = await this.getWalletClient();
+        const walletClient =
+            await this.getWalletClient();
 
-        const hash = await walletClient.writeContract({
-            address: FACTORY_ADDRESS,
-            abi: TrustLanceFactoryABI,
-            functionName: "createEscrow",
-        });
+        const hash =
+            await walletClient.writeContract({
+                address: FACTORY_ADDRESS,
+                abi: TrustLanceFactoryABI,
+                functionName: "createEscrow",
+                chain: hardhatLocal,
+                account: walletClient.account,
+            });
 
         const receipt =
             await this.waitForTransaction(hash);
 
         for (const log of receipt.logs) {
+
             try {
 
-                const parsed = decodeEventLog({
-                    abi: TrustLanceFactoryABI,
-                    data: log.data,
-                    topics: log.topics,
-                });
+                const parsed =
+                    decodeEventLog({
+                        abi: TrustLanceFactoryABI,
+                        data: log.data,
+                        topics: log.topics,
+                    });
 
-                if (parsed.eventName === "EscrowCreated") {
-                    return parsed.args.escrow;
+                if (
+                    parsed.eventName ===
+                    "EscrowCreated"
+                ) {
+
+                    const args =
+                        parsed.args as {
+                            escrow: Address;
+                        };
+
+                    return args.escrow;
                 }
 
             } catch {
-                // Ignore logs belonging to other contracts/events.
+                // Ignore logs that do not belong
+                // to the Factory ABI.
             }
         }
 
@@ -137,11 +157,14 @@ export class BlockchainService {
 
     async getAllEscrows(): Promise<Address[]> {
 
-        return [...(await publicClient.readContract({
-            address: FACTORY_ADDRESS,
-            abi: TrustLanceFactoryABI,
-            functionName: "getAllEscrows",
-        }))];
+        const escrows =
+            await publicClient.readContract({
+                address: FACTORY_ADDRESS,
+                abi: TrustLanceFactoryABI,
+                functionName: "getAllEscrows",
+            });
+
+        return [...escrows];
     }
 
 
@@ -149,12 +172,15 @@ export class BlockchainService {
         client: Address,
     ): Promise<Address[]> {
 
-        return [...(await publicClient.readContract({
-            address: FACTORY_ADDRESS,
-            abi: TrustLanceFactoryABI,
-            functionName: "getClientEscrows",
-            args: [client],
-        }))];
+        const escrows =
+            await publicClient.readContract({
+                address: FACTORY_ADDRESS,
+                abi: TrustLanceFactoryABI,
+                functionName: "getClientEscrows",
+                args: [client],
+            });
+
+        return [...escrows];
     }
 
 
@@ -224,7 +250,10 @@ export class BlockchainService {
             );
         }
 
-        if (amounts.length !== descriptions.length) {
+        if (
+            amounts.length !==
+            descriptions.length
+        ) {
             throw new Error(
                 "Amounts and descriptions must have the same length",
             );
@@ -236,7 +265,10 @@ export class BlockchainService {
                 0n,
             );
 
-        if (calculatedTotal !== totalValue) {
+        if (
+            calculatedTotal !==
+            totalValue
+        ) {
             throw new Error(
                 "Total value does not equal milestone amounts",
             );
@@ -253,7 +285,9 @@ export class BlockchainService {
                 amounts,
                 descriptions,
             ],
+            chain: hardhatLocal,
             value: totalValue,
+            account: walletClient.account,
         });
     }
 
@@ -275,6 +309,8 @@ export class BlockchainService {
             abi: TrustLanceEscrowABI,
             functionName: "awardFreelancer",
             args: [freelancer],
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -289,8 +325,13 @@ export class BlockchainService {
         cid: string,
     ): Promise<Hash> {
 
-        if (!cid.trim()) {
-            throw new Error("Deliverable CID cannot be empty");
+        const trimmedCid =
+            cid.trim();
+
+        if (!trimmedCid) {
+            throw new Error(
+                "Deliverable CID cannot be empty",
+            );
         }
 
         const walletClient =
@@ -300,7 +341,12 @@ export class BlockchainService {
             address: escrowAddress,
             abi: TrustLanceEscrowABI,
             functionName: "submitMilestone",
-            args: [index, cid],
+            args: [
+                index,
+                trimmedCid,
+            ],
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -322,6 +368,8 @@ export class BlockchainService {
             abi: TrustLanceEscrowABI,
             functionName: "approveMilestone",
             args: [index],
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -339,6 +387,8 @@ export class BlockchainService {
             abi: TrustLanceEscrowABI,
             functionName: "autoApproveMilestone",
             args: [index],
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -360,6 +410,8 @@ export class BlockchainService {
             abi: TrustLanceEscrowABI,
             functionName: "rejectMilestone",
             args: [index],
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -381,6 +433,8 @@ export class BlockchainService {
             abi: TrustLanceEscrowABI,
             functionName: "raiseDispute",
             args: [index],
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -398,6 +452,8 @@ export class BlockchainService {
             abi: TrustLanceEscrowABI,
             functionName: "withdrawRejection",
             args: [index],
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -415,6 +471,8 @@ export class BlockchainService {
             abi: TrustLanceEscrowABI,
             functionName: "acceptRejection",
             args: [index],
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -432,6 +490,8 @@ export class BlockchainService {
             abi: TrustLanceEscrowABI,
             functionName: "autoResolveDispute",
             args: [index],
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -451,6 +511,8 @@ export class BlockchainService {
             address: escrowAddress,
             abi: TrustLanceEscrowABI,
             functionName: "requestCancellation",
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -466,6 +528,8 @@ export class BlockchainService {
             address: escrowAddress,
             abi: TrustLanceEscrowABI,
             functionName: "cancelProjectBeforeAward",
+            chain: hardhatLocal,
+            account: walletClient.account,
         });
     }
 
@@ -559,13 +623,15 @@ export class BlockchainService {
             publicClient.readContract({
                 address: escrowAddress,
                 abi: TrustLanceEscrowABI,
-                functionName: "clientCancellationRequested",
+                functionName:
+                    "clientCancellationRequested",
             }),
 
             publicClient.readContract({
                 address: escrowAddress,
                 abi: TrustLanceEscrowABI,
-                functionName: "freelancerCancellationRequested",
+                functionName:
+                    "freelancerCancellationRequested",
             }),
         ]);
 
@@ -581,6 +647,10 @@ export class BlockchainService {
     }
 }
 
+
+// ============================================================
+// SINGLETON
+// ============================================================
 
 export const blockchainService =
     new BlockchainService();

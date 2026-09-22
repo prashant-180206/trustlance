@@ -8,13 +8,13 @@ import {
     useFundProject,
     useRequestCancellation,
     useCancelProjectBeforeAward,
-} from "../../../hooks/project.hooks";
-import { useProjectApplications } from "../../../hooks/application.hooks";
+} from "../../../../hooks/project.hooks";
+import { useProjectApplications } from "../../../../hooks/application.hooks";
 import { Link } from "@tanstack/react-router";
-import { Button, ErrorMessage, Field, Shell, Textarea } from "../../-components";
+import { Button, ErrorMessage, Field, Shell, Textarea } from "../../../-components";
 
 export const Route = createFileRoute(
-    "/company/projects/$projectId",
+    "/company/projects/$projectId/",
 )({
     component: CompanyProject,
 });
@@ -80,7 +80,10 @@ function CompanyProject() {
                 <pre>
                     {JSON.stringify(
                         blockchainQuery.data,
-                        null,
+                        (_, value) =>
+                            typeof value === "bigint"
+                                ? value.toString()
+                                : value,
                         2,
                     )}
                 </pre>
@@ -94,7 +97,7 @@ function CompanyProject() {
                 <Field label="Freelancer wallet" value={freelancerWallet} onChange={(event) => setFreelancerWallet(event.target.value)} placeholder="0x..." />
                 <Textarea label="Amounts in wei, one per line" value={amounts} onChange={(event) => setAmounts(event.target.value)} />
                 <Textarea label="Descriptions, one per line" value={descriptions} onChange={(event) => setDescriptions(event.target.value)} />
-                <Button disabled={!project.escrow_address || fund.isPending} onClick={() => fund.mutate({ projectId, freelancerWallet: freelancerWallet as Address, milestoneData: { amounts: amounts.split(/\r?\n/).filter(Boolean).map((amount) => BigInt(amount)), descriptions: descriptions.split(/\r?\n/) .filter(Boolean) } })}>{fund.isPending ? "Funding..." : "Fund and award"}</Button>
+                <Button disabled={!project.escrow_address || fund.isPending} onClick={() => fund.mutate({ projectId, freelancerWallet: freelancerWallet as Address, milestoneData: { amounts: amounts.split(/\r?\n/).filter(Boolean).map((amount) => BigInt(amount)), descriptions: descriptions.split(/\r?\n/).filter(Boolean) } })}>{fund.isPending ? "Funding..." : "Fund and award"}</Button>
                 <div className="flex gap-2"><Button disabled={requestCancellation.isPending} onClick={() => requestCancellation.mutate({ projectId })}>Request cancellation</Button><Button disabled={cancelBeforeAward.isPending} onClick={() => cancelBeforeAward.mutate({ projectId })}>Cancel before award</Button></div>
                 <ErrorMessage error={fund.error ?? requestCancellation.error ?? cancelBeforeAward.error} />
             </div>

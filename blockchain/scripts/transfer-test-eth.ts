@@ -15,7 +15,7 @@ const PRIVATE_KEY =
 
 // Account that should RECEIVE the test ETH
 const RECIPIENT =
-  "0xA88e2AB8883Ec40cB730fBCFC0d8d88b22811794" as `0x${string}`;
+  "0xBa1C77D6DF4749Ee47ae92C9850aC4915443Fa5c" as `0x${string}`;
 
 
 const localhost = {

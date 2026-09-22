@@ -21,12 +21,12 @@ import { Route as ProjectProjectIdRouteRouteImport } from './routes/project/$pro
 import { Route as CompanyApplicationsIndexRouteImport } from './routes/company/applications/index'
 import { Route as CompanyApplicationsApplicationIdRouteImport } from './routes/company/applications/$applicationId'
 import { Route as CompanyProjectsIndexRouteImport } from './routes/company/projects/index'
-import { Route as CompanyProjectsProjectIdRouteImport } from './routes/company/projects/$projectId'
 import { Route as CompanyProjectsNewRouteImport } from './routes/company/projects/new'
 import { Route as FreelancerApplicationsIndexRouteImport } from './routes/freelancer/applications/index'
 import { Route as FreelancerApplicationsApplicationIdRouteImport } from './routes/freelancer/applications/$applicationId'
 import { Route as FreelancerProjectsIndexRouteImport } from './routes/freelancer/projects/index'
 import { Route as ProjectProjectIdIndexRouteImport } from './routes/project/$projectId/index'
+import { Route as CompanyProjectsProjectIdIndexRouteImport } from './routes/company/projects/$projectId/index'
 import { Route as FreelancerProjectsProjectIdIndexRouteImport } from './routes/freelancer/projects/$projectId/index'
 import { Route as CompanyProjectsProjectIdDisputesIndexRouteImport } from './routes/company/projects/$projectId/disputes/index'
 import { Route as CompanyProjectsProjectIdDisputesDisputeIdRouteImport } from './routes/company/projects/$projectId/disputes/$disputeId'
@@ -100,12 +100,6 @@ const CompanyProjectsIndexRoute = CompanyProjectsIndexRouteImport.update({
   path: '/projects/',
   getParentRoute: () => CompanyRouteRoute,
 } as any)
-const CompanyProjectsProjectIdRoute =
-  CompanyProjectsProjectIdRouteImport.update({
-    id: '/projects/$projectId',
-    path: '/projects/$projectId',
-    getParentRoute: () => CompanyRouteRoute,
-  } as any)
 const CompanyProjectsNewRoute = CompanyProjectsNewRouteImport.update({
   id: '/projects/new',
   path: '/projects/new',
@@ -133,6 +127,12 @@ const ProjectProjectIdIndexRoute = ProjectProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProjectProjectIdRouteRoute,
 } as any)
+const CompanyProjectsProjectIdIndexRoute =
+  CompanyProjectsProjectIdIndexRouteImport.update({
+    id: '/projects/$projectId/',
+    path: '/projects/$projectId/',
+    getParentRoute: () => CompanyRouteRoute,
+  } as any)
 const FreelancerProjectsProjectIdIndexRoute =
   FreelancerProjectsProjectIdIndexRouteImport.update({
     id: '/projects/$projectId/',
@@ -141,33 +141,33 @@ const FreelancerProjectsProjectIdIndexRoute =
   } as any)
 const CompanyProjectsProjectIdDisputesIndexRoute =
   CompanyProjectsProjectIdDisputesIndexRouteImport.update({
-    id: '/disputes/',
-    path: '/disputes/',
-    getParentRoute: () => CompanyProjectsProjectIdRoute,
+    id: '/projects/$projectId/disputes/',
+    path: '/projects/$projectId/disputes/',
+    getParentRoute: () => CompanyRouteRoute,
   } as any)
 const CompanyProjectsProjectIdDisputesDisputeIdRoute =
   CompanyProjectsProjectIdDisputesDisputeIdRouteImport.update({
-    id: '/disputes/$disputeId',
-    path: '/disputes/$disputeId',
-    getParentRoute: () => CompanyProjectsProjectIdRoute,
+    id: '/projects/$projectId/disputes/$disputeId',
+    path: '/projects/$projectId/disputes/$disputeId',
+    getParentRoute: () => CompanyRouteRoute,
   } as any)
 const CompanyProjectsProjectIdMilestonesIndexRoute =
   CompanyProjectsProjectIdMilestonesIndexRouteImport.update({
-    id: '/milestones/',
-    path: '/milestones/',
-    getParentRoute: () => CompanyProjectsProjectIdRoute,
+    id: '/projects/$projectId/milestones/',
+    path: '/projects/$projectId/milestones/',
+    getParentRoute: () => CompanyRouteRoute,
   } as any)
 const CompanyProjectsProjectIdMilestonesMilestoneIdRoute =
   CompanyProjectsProjectIdMilestonesMilestoneIdRouteImport.update({
-    id: '/milestones/$milestoneId',
-    path: '/milestones/$milestoneId',
-    getParentRoute: () => CompanyProjectsProjectIdRoute,
+    id: '/projects/$projectId/milestones/$milestoneId',
+    path: '/projects/$projectId/milestones/$milestoneId',
+    getParentRoute: () => CompanyRouteRoute,
   } as any)
 const CompanyProjectsProjectIdMilestonesNewRoute =
   CompanyProjectsProjectIdMilestonesNewRouteImport.update({
-    id: '/milestones/new',
-    path: '/milestones/new',
-    getParentRoute: () => CompanyProjectsProjectIdRoute,
+    id: '/projects/$projectId/milestones/new',
+    path: '/projects/$projectId/milestones/new',
+    getParentRoute: () => CompanyRouteRoute,
   } as any)
 const FreelancerProjectsProjectIdDisputesIndexRoute =
   FreelancerProjectsProjectIdDisputesIndexRouteImport.update({
@@ -205,7 +205,6 @@ export interface FileRoutesByFullPath {
   '/freelancer/dashboard': typeof FreelancerDashboardRoute
   '/freelancer/profile': typeof FreelancerProfileRoute
   '/company/applications/$applicationId': typeof CompanyApplicationsApplicationIdRoute
-  '/company/projects/$projectId': typeof CompanyProjectsProjectIdRouteWithChildren
   '/company/projects/new': typeof CompanyProjectsNewRoute
   '/freelancer/applications/$applicationId': typeof FreelancerApplicationsApplicationIdRoute
   '/company/applications/': typeof CompanyApplicationsIndexRoute
@@ -213,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/freelancer/applications/': typeof FreelancerApplicationsIndexRoute
   '/freelancer/projects/': typeof FreelancerProjectsIndexRoute
   '/project/$projectId/': typeof ProjectProjectIdIndexRoute
+  '/company/projects/$projectId/': typeof CompanyProjectsProjectIdIndexRoute
   '/freelancer/projects/$projectId/': typeof FreelancerProjectsProjectIdIndexRoute
   '/company/projects/$projectId/disputes/$disputeId': typeof CompanyProjectsProjectIdDisputesDisputeIdRoute
   '/company/projects/$projectId/milestones/$milestoneId': typeof CompanyProjectsProjectIdMilestonesMilestoneIdRoute
@@ -234,7 +234,6 @@ export interface FileRoutesByTo {
   '/freelancer/dashboard': typeof FreelancerDashboardRoute
   '/freelancer/profile': typeof FreelancerProfileRoute
   '/company/applications/$applicationId': typeof CompanyApplicationsApplicationIdRoute
-  '/company/projects/$projectId': typeof CompanyProjectsProjectIdRouteWithChildren
   '/company/projects/new': typeof CompanyProjectsNewRoute
   '/freelancer/applications/$applicationId': typeof FreelancerApplicationsApplicationIdRoute
   '/company/applications': typeof CompanyApplicationsIndexRoute
@@ -242,6 +241,7 @@ export interface FileRoutesByTo {
   '/freelancer/applications': typeof FreelancerApplicationsIndexRoute
   '/freelancer/projects': typeof FreelancerProjectsIndexRoute
   '/project/$projectId': typeof ProjectProjectIdIndexRoute
+  '/company/projects/$projectId': typeof CompanyProjectsProjectIdIndexRoute
   '/freelancer/projects/$projectId': typeof FreelancerProjectsProjectIdIndexRoute
   '/company/projects/$projectId/disputes/$disputeId': typeof CompanyProjectsProjectIdDisputesDisputeIdRoute
   '/company/projects/$projectId/milestones/$milestoneId': typeof CompanyProjectsProjectIdMilestonesMilestoneIdRoute
@@ -265,7 +265,6 @@ export interface FileRoutesById {
   '/freelancer/dashboard': typeof FreelancerDashboardRoute
   '/freelancer/profile': typeof FreelancerProfileRoute
   '/company/applications/$applicationId': typeof CompanyApplicationsApplicationIdRoute
-  '/company/projects/$projectId': typeof CompanyProjectsProjectIdRouteWithChildren
   '/company/projects/new': typeof CompanyProjectsNewRoute
   '/freelancer/applications/$applicationId': typeof FreelancerApplicationsApplicationIdRoute
   '/company/applications/': typeof CompanyApplicationsIndexRoute
@@ -273,6 +272,7 @@ export interface FileRoutesById {
   '/freelancer/applications/': typeof FreelancerApplicationsIndexRoute
   '/freelancer/projects/': typeof FreelancerProjectsIndexRoute
   '/project/$projectId/': typeof ProjectProjectIdIndexRoute
+  '/company/projects/$projectId/': typeof CompanyProjectsProjectIdIndexRoute
   '/freelancer/projects/$projectId/': typeof FreelancerProjectsProjectIdIndexRoute
   '/company/projects/$projectId/disputes/$disputeId': typeof CompanyProjectsProjectIdDisputesDisputeIdRoute
   '/company/projects/$projectId/milestones/$milestoneId': typeof CompanyProjectsProjectIdMilestonesMilestoneIdRoute
@@ -297,7 +297,6 @@ export interface FileRouteTypes {
     | '/freelancer/dashboard'
     | '/freelancer/profile'
     | '/company/applications/$applicationId'
-    | '/company/projects/$projectId'
     | '/company/projects/new'
     | '/freelancer/applications/$applicationId'
     | '/company/applications/'
@@ -305,6 +304,7 @@ export interface FileRouteTypes {
     | '/freelancer/applications/'
     | '/freelancer/projects/'
     | '/project/$projectId/'
+    | '/company/projects/$projectId/'
     | '/freelancer/projects/$projectId/'
     | '/company/projects/$projectId/disputes/$disputeId'
     | '/company/projects/$projectId/milestones/$milestoneId'
@@ -326,7 +326,6 @@ export interface FileRouteTypes {
     | '/freelancer/dashboard'
     | '/freelancer/profile'
     | '/company/applications/$applicationId'
-    | '/company/projects/$projectId'
     | '/company/projects/new'
     | '/freelancer/applications/$applicationId'
     | '/company/applications'
@@ -334,6 +333,7 @@ export interface FileRouteTypes {
     | '/freelancer/applications'
     | '/freelancer/projects'
     | '/project/$projectId'
+    | '/company/projects/$projectId'
     | '/freelancer/projects/$projectId'
     | '/company/projects/$projectId/disputes/$disputeId'
     | '/company/projects/$projectId/milestones/$milestoneId'
@@ -356,7 +356,6 @@ export interface FileRouteTypes {
     | '/freelancer/dashboard'
     | '/freelancer/profile'
     | '/company/applications/$applicationId'
-    | '/company/projects/$projectId'
     | '/company/projects/new'
     | '/freelancer/applications/$applicationId'
     | '/company/applications/'
@@ -364,6 +363,7 @@ export interface FileRouteTypes {
     | '/freelancer/applications/'
     | '/freelancer/projects/'
     | '/project/$projectId/'
+    | '/company/projects/$projectId/'
     | '/freelancer/projects/$projectId/'
     | '/company/projects/$projectId/disputes/$disputeId'
     | '/company/projects/$projectId/milestones/$milestoneId'
@@ -470,13 +470,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompanyProjectsIndexRouteImport
       parentRoute: typeof CompanyRouteRoute
     }
-    '/company/projects/$projectId': {
-      id: '/company/projects/$projectId'
-      path: '/projects/$projectId'
-      fullPath: '/company/projects/$projectId'
-      preLoaderRoute: typeof CompanyProjectsProjectIdRouteImport
-      parentRoute: typeof CompanyRouteRoute
-    }
     '/company/projects/new': {
       id: '/company/projects/new'
       path: '/projects/new'
@@ -512,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectProjectIdIndexRouteImport
       parentRoute: typeof ProjectProjectIdRouteRoute
     }
+    '/company/projects/$projectId/': {
+      id: '/company/projects/$projectId/'
+      path: '/projects/$projectId'
+      fullPath: '/company/projects/$projectId/'
+      preLoaderRoute: typeof CompanyProjectsProjectIdIndexRouteImport
+      parentRoute: typeof CompanyRouteRoute
+    }
     '/freelancer/projects/$projectId/': {
       id: '/freelancer/projects/$projectId/'
       path: '/projects/$projectId'
@@ -521,38 +521,38 @@ declare module '@tanstack/react-router' {
     }
     '/company/projects/$projectId/disputes/': {
       id: '/company/projects/$projectId/disputes/'
-      path: '/disputes'
+      path: '/projects/$projectId/disputes'
       fullPath: '/company/projects/$projectId/disputes/'
       preLoaderRoute: typeof CompanyProjectsProjectIdDisputesIndexRouteImport
-      parentRoute: typeof CompanyProjectsProjectIdRoute
+      parentRoute: typeof CompanyRouteRoute
     }
     '/company/projects/$projectId/disputes/$disputeId': {
       id: '/company/projects/$projectId/disputes/$disputeId'
-      path: '/disputes/$disputeId'
+      path: '/projects/$projectId/disputes/$disputeId'
       fullPath: '/company/projects/$projectId/disputes/$disputeId'
       preLoaderRoute: typeof CompanyProjectsProjectIdDisputesDisputeIdRouteImport
-      parentRoute: typeof CompanyProjectsProjectIdRoute
+      parentRoute: typeof CompanyRouteRoute
     }
     '/company/projects/$projectId/milestones/': {
       id: '/company/projects/$projectId/milestones/'
-      path: '/milestones'
+      path: '/projects/$projectId/milestones'
       fullPath: '/company/projects/$projectId/milestones/'
       preLoaderRoute: typeof CompanyProjectsProjectIdMilestonesIndexRouteImport
-      parentRoute: typeof CompanyProjectsProjectIdRoute
+      parentRoute: typeof CompanyRouteRoute
     }
     '/company/projects/$projectId/milestones/$milestoneId': {
       id: '/company/projects/$projectId/milestones/$milestoneId'
-      path: '/milestones/$milestoneId'
+      path: '/projects/$projectId/milestones/$milestoneId'
       fullPath: '/company/projects/$projectId/milestones/$milestoneId'
       preLoaderRoute: typeof CompanyProjectsProjectIdMilestonesMilestoneIdRouteImport
-      parentRoute: typeof CompanyProjectsProjectIdRoute
+      parentRoute: typeof CompanyRouteRoute
     }
     '/company/projects/$projectId/milestones/new': {
       id: '/company/projects/$projectId/milestones/new'
-      path: '/milestones/new'
+      path: '/projects/$projectId/milestones/new'
       fullPath: '/company/projects/$projectId/milestones/new'
       preLoaderRoute: typeof CompanyProjectsProjectIdMilestonesNewRouteImport
-      parentRoute: typeof CompanyProjectsProjectIdRoute
+      parentRoute: typeof CompanyRouteRoute
     }
     '/freelancer/projects/$projectId/disputes/': {
       id: '/freelancer/projects/$projectId/disputes/'
@@ -585,7 +585,14 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface CompanyProjectsProjectIdRouteChildren {
+interface CompanyRouteRouteChildren {
+  CompanyDashboardRoute: typeof CompanyDashboardRoute
+  CompanyProfileRoute: typeof CompanyProfileRoute
+  CompanyApplicationsApplicationIdRoute: typeof CompanyApplicationsApplicationIdRoute
+  CompanyProjectsNewRoute: typeof CompanyProjectsNewRoute
+  CompanyApplicationsIndexRoute: typeof CompanyApplicationsIndexRoute
+  CompanyProjectsIndexRoute: typeof CompanyProjectsIndexRoute
+  CompanyProjectsProjectIdIndexRoute: typeof CompanyProjectsProjectIdIndexRoute
   CompanyProjectsProjectIdDisputesDisputeIdRoute: typeof CompanyProjectsProjectIdDisputesDisputeIdRoute
   CompanyProjectsProjectIdMilestonesMilestoneIdRoute: typeof CompanyProjectsProjectIdMilestonesMilestoneIdRoute
   CompanyProjectsProjectIdMilestonesNewRoute: typeof CompanyProjectsProjectIdMilestonesNewRoute
@@ -593,43 +600,24 @@ interface CompanyProjectsProjectIdRouteChildren {
   CompanyProjectsProjectIdMilestonesIndexRoute: typeof CompanyProjectsProjectIdMilestonesIndexRoute
 }
 
-const CompanyProjectsProjectIdRouteChildren: CompanyProjectsProjectIdRouteChildren =
-  {
-    CompanyProjectsProjectIdDisputesDisputeIdRoute:
-      CompanyProjectsProjectIdDisputesDisputeIdRoute,
-    CompanyProjectsProjectIdMilestonesMilestoneIdRoute:
-      CompanyProjectsProjectIdMilestonesMilestoneIdRoute,
-    CompanyProjectsProjectIdMilestonesNewRoute:
-      CompanyProjectsProjectIdMilestonesNewRoute,
-    CompanyProjectsProjectIdDisputesIndexRoute:
-      CompanyProjectsProjectIdDisputesIndexRoute,
-    CompanyProjectsProjectIdMilestonesIndexRoute:
-      CompanyProjectsProjectIdMilestonesIndexRoute,
-  }
-
-const CompanyProjectsProjectIdRouteWithChildren =
-  CompanyProjectsProjectIdRoute._addFileChildren(
-    CompanyProjectsProjectIdRouteChildren,
-  )
-
-interface CompanyRouteRouteChildren {
-  CompanyDashboardRoute: typeof CompanyDashboardRoute
-  CompanyProfileRoute: typeof CompanyProfileRoute
-  CompanyApplicationsApplicationIdRoute: typeof CompanyApplicationsApplicationIdRoute
-  CompanyProjectsProjectIdRoute: typeof CompanyProjectsProjectIdRouteWithChildren
-  CompanyProjectsNewRoute: typeof CompanyProjectsNewRoute
-  CompanyApplicationsIndexRoute: typeof CompanyApplicationsIndexRoute
-  CompanyProjectsIndexRoute: typeof CompanyProjectsIndexRoute
-}
-
 const CompanyRouteRouteChildren: CompanyRouteRouteChildren = {
   CompanyDashboardRoute: CompanyDashboardRoute,
   CompanyProfileRoute: CompanyProfileRoute,
   CompanyApplicationsApplicationIdRoute: CompanyApplicationsApplicationIdRoute,
-  CompanyProjectsProjectIdRoute: CompanyProjectsProjectIdRouteWithChildren,
   CompanyProjectsNewRoute: CompanyProjectsNewRoute,
   CompanyApplicationsIndexRoute: CompanyApplicationsIndexRoute,
   CompanyProjectsIndexRoute: CompanyProjectsIndexRoute,
+  CompanyProjectsProjectIdIndexRoute: CompanyProjectsProjectIdIndexRoute,
+  CompanyProjectsProjectIdDisputesDisputeIdRoute:
+    CompanyProjectsProjectIdDisputesDisputeIdRoute,
+  CompanyProjectsProjectIdMilestonesMilestoneIdRoute:
+    CompanyProjectsProjectIdMilestonesMilestoneIdRoute,
+  CompanyProjectsProjectIdMilestonesNewRoute:
+    CompanyProjectsProjectIdMilestonesNewRoute,
+  CompanyProjectsProjectIdDisputesIndexRoute:
+    CompanyProjectsProjectIdDisputesIndexRoute,
+  CompanyProjectsProjectIdMilestonesIndexRoute:
+    CompanyProjectsProjectIdMilestonesIndexRoute,
 }
 
 const CompanyRouteRouteWithChildren = CompanyRouteRoute._addFileChildren(
