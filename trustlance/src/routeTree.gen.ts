@@ -14,16 +14,18 @@ import { Route as CompanyRouteRouteImport } from './routes/company/route'
 import { Route as FreelancerRouteRouteImport } from './routes/freelancer/route'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as CompanyDashboardRouteImport } from './routes/company/dashboard'
-import { Route as CompanyProfileRouteImport } from './routes/company/profile'
 import { Route as FreelancerDashboardRouteImport } from './routes/freelancer/dashboard'
-import { Route as FreelancerProfileRouteImport } from './routes/freelancer/profile'
 import { Route as ProjectProjectIdRouteRouteImport } from './routes/project/$projectId/route'
 import { Route as CompanyApplicationsIndexRouteImport } from './routes/company/applications/index'
 import { Route as CompanyApplicationsApplicationIdRouteImport } from './routes/company/applications/$applicationId'
+import { Route as CompanyProfileIndexRouteImport } from './routes/company/profile/index'
+import { Route as CompanyProfileUpdateRouteImport } from './routes/company/profile/update'
 import { Route as CompanyProjectsIndexRouteImport } from './routes/company/projects/index'
 import { Route as CompanyProjectsNewRouteImport } from './routes/company/projects/new'
 import { Route as FreelancerApplicationsIndexRouteImport } from './routes/freelancer/applications/index'
 import { Route as FreelancerApplicationsApplicationIdRouteImport } from './routes/freelancer/applications/$applicationId'
+import { Route as FreelancerProfileIndexRouteImport } from './routes/freelancer/profile/index'
+import { Route as FreelancerProfileUpdateRouteImport } from './routes/freelancer/profile/update'
 import { Route as FreelancerProjectsIndexRouteImport } from './routes/freelancer/projects/index'
 import { Route as ProjectProjectIdIndexRouteImport } from './routes/project/$projectId/index'
 import { Route as CompanyProjectsProjectIdIndexRouteImport } from './routes/company/projects/$projectId/index'
@@ -63,19 +65,9 @@ const CompanyDashboardRoute = CompanyDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => CompanyRouteRoute,
 } as any)
-const CompanyProfileRoute = CompanyProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => CompanyRouteRoute,
-} as any)
 const FreelancerDashboardRoute = FreelancerDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => FreelancerRouteRoute,
-} as any)
-const FreelancerProfileRoute = FreelancerProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
   getParentRoute: () => FreelancerRouteRoute,
 } as any)
 const ProjectProjectIdRouteRoute = ProjectProjectIdRouteRouteImport.update({
@@ -95,6 +87,16 @@ const CompanyApplicationsApplicationIdRoute =
     path: '/applications/$applicationId',
     getParentRoute: () => CompanyRouteRoute,
   } as any)
+const CompanyProfileIndexRoute = CompanyProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => CompanyRouteRoute,
+} as any)
+const CompanyProfileUpdateRoute = CompanyProfileUpdateRouteImport.update({
+  id: '/profile/update',
+  path: '/profile/update',
+  getParentRoute: () => CompanyRouteRoute,
+} as any)
 const CompanyProjectsIndexRoute = CompanyProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -117,6 +119,16 @@ const FreelancerApplicationsApplicationIdRoute =
     path: '/applications/$applicationId',
     getParentRoute: () => FreelancerRouteRoute,
   } as any)
+const FreelancerProfileIndexRoute = FreelancerProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => FreelancerRouteRoute,
+} as any)
+const FreelancerProfileUpdateRoute = FreelancerProfileUpdateRouteImport.update({
+  id: '/profile/update',
+  path: '/profile/update',
+  getParentRoute: () => FreelancerRouteRoute,
+} as any)
 const FreelancerProjectsIndexRoute = FreelancerProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -201,15 +213,17 @@ export interface FileRoutesByFullPath {
   '/project/$projectId': typeof ProjectProjectIdRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/company/dashboard': typeof CompanyDashboardRoute
-  '/company/profile': typeof CompanyProfileRoute
   '/freelancer/dashboard': typeof FreelancerDashboardRoute
-  '/freelancer/profile': typeof FreelancerProfileRoute
   '/company/applications/$applicationId': typeof CompanyApplicationsApplicationIdRoute
+  '/company/profile/update': typeof CompanyProfileUpdateRoute
   '/company/projects/new': typeof CompanyProjectsNewRoute
   '/freelancer/applications/$applicationId': typeof FreelancerApplicationsApplicationIdRoute
+  '/freelancer/profile/update': typeof FreelancerProfileUpdateRoute
   '/company/applications/': typeof CompanyApplicationsIndexRoute
+  '/company/profile/': typeof CompanyProfileIndexRoute
   '/company/projects/': typeof CompanyProjectsIndexRoute
   '/freelancer/applications/': typeof FreelancerApplicationsIndexRoute
+  '/freelancer/profile/': typeof FreelancerProfileIndexRoute
   '/freelancer/projects/': typeof FreelancerProjectsIndexRoute
   '/project/$projectId/': typeof ProjectProjectIdIndexRoute
   '/company/projects/$projectId/': typeof CompanyProjectsProjectIdIndexRoute
@@ -230,15 +244,17 @@ export interface FileRoutesByTo {
   '/freelancer': typeof FreelancerRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/company/dashboard': typeof CompanyDashboardRoute
-  '/company/profile': typeof CompanyProfileRoute
   '/freelancer/dashboard': typeof FreelancerDashboardRoute
-  '/freelancer/profile': typeof FreelancerProfileRoute
   '/company/applications/$applicationId': typeof CompanyApplicationsApplicationIdRoute
+  '/company/profile/update': typeof CompanyProfileUpdateRoute
   '/company/projects/new': typeof CompanyProjectsNewRoute
   '/freelancer/applications/$applicationId': typeof FreelancerApplicationsApplicationIdRoute
+  '/freelancer/profile/update': typeof FreelancerProfileUpdateRoute
   '/company/applications': typeof CompanyApplicationsIndexRoute
+  '/company/profile': typeof CompanyProfileIndexRoute
   '/company/projects': typeof CompanyProjectsIndexRoute
   '/freelancer/applications': typeof FreelancerApplicationsIndexRoute
+  '/freelancer/profile': typeof FreelancerProfileIndexRoute
   '/freelancer/projects': typeof FreelancerProjectsIndexRoute
   '/project/$projectId': typeof ProjectProjectIdIndexRoute
   '/company/projects/$projectId': typeof CompanyProjectsProjectIdIndexRoute
@@ -261,15 +277,17 @@ export interface FileRoutesById {
   '/project/$projectId': typeof ProjectProjectIdRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/company/dashboard': typeof CompanyDashboardRoute
-  '/company/profile': typeof CompanyProfileRoute
   '/freelancer/dashboard': typeof FreelancerDashboardRoute
-  '/freelancer/profile': typeof FreelancerProfileRoute
   '/company/applications/$applicationId': typeof CompanyApplicationsApplicationIdRoute
+  '/company/profile/update': typeof CompanyProfileUpdateRoute
   '/company/projects/new': typeof CompanyProjectsNewRoute
   '/freelancer/applications/$applicationId': typeof FreelancerApplicationsApplicationIdRoute
+  '/freelancer/profile/update': typeof FreelancerProfileUpdateRoute
   '/company/applications/': typeof CompanyApplicationsIndexRoute
+  '/company/profile/': typeof CompanyProfileIndexRoute
   '/company/projects/': typeof CompanyProjectsIndexRoute
   '/freelancer/applications/': typeof FreelancerApplicationsIndexRoute
+  '/freelancer/profile/': typeof FreelancerProfileIndexRoute
   '/freelancer/projects/': typeof FreelancerProjectsIndexRoute
   '/project/$projectId/': typeof ProjectProjectIdIndexRoute
   '/company/projects/$projectId/': typeof CompanyProjectsProjectIdIndexRoute
@@ -293,15 +311,17 @@ export interface FileRouteTypes {
     | '/project/$projectId'
     | '/auth/login'
     | '/company/dashboard'
-    | '/company/profile'
     | '/freelancer/dashboard'
-    | '/freelancer/profile'
     | '/company/applications/$applicationId'
+    | '/company/profile/update'
     | '/company/projects/new'
     | '/freelancer/applications/$applicationId'
+    | '/freelancer/profile/update'
     | '/company/applications/'
+    | '/company/profile/'
     | '/company/projects/'
     | '/freelancer/applications/'
+    | '/freelancer/profile/'
     | '/freelancer/projects/'
     | '/project/$projectId/'
     | '/company/projects/$projectId/'
@@ -322,15 +342,17 @@ export interface FileRouteTypes {
     | '/freelancer'
     | '/auth/login'
     | '/company/dashboard'
-    | '/company/profile'
     | '/freelancer/dashboard'
-    | '/freelancer/profile'
     | '/company/applications/$applicationId'
+    | '/company/profile/update'
     | '/company/projects/new'
     | '/freelancer/applications/$applicationId'
+    | '/freelancer/profile/update'
     | '/company/applications'
+    | '/company/profile'
     | '/company/projects'
     | '/freelancer/applications'
+    | '/freelancer/profile'
     | '/freelancer/projects'
     | '/project/$projectId'
     | '/company/projects/$projectId'
@@ -352,15 +374,17 @@ export interface FileRouteTypes {
     | '/project/$projectId'
     | '/auth/login'
     | '/company/dashboard'
-    | '/company/profile'
     | '/freelancer/dashboard'
-    | '/freelancer/profile'
     | '/company/applications/$applicationId'
+    | '/company/profile/update'
     | '/company/projects/new'
     | '/freelancer/applications/$applicationId'
+    | '/freelancer/profile/update'
     | '/company/applications/'
+    | '/company/profile/'
     | '/company/projects/'
     | '/freelancer/applications/'
+    | '/freelancer/profile/'
     | '/freelancer/projects/'
     | '/project/$projectId/'
     | '/company/projects/$projectId/'
@@ -421,25 +445,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompanyDashboardRouteImport
       parentRoute: typeof CompanyRouteRoute
     }
-    '/company/profile': {
-      id: '/company/profile'
-      path: '/profile'
-      fullPath: '/company/profile'
-      preLoaderRoute: typeof CompanyProfileRouteImport
-      parentRoute: typeof CompanyRouteRoute
-    }
     '/freelancer/dashboard': {
       id: '/freelancer/dashboard'
       path: '/dashboard'
       fullPath: '/freelancer/dashboard'
       preLoaderRoute: typeof FreelancerDashboardRouteImport
-      parentRoute: typeof FreelancerRouteRoute
-    }
-    '/freelancer/profile': {
-      id: '/freelancer/profile'
-      path: '/profile'
-      fullPath: '/freelancer/profile'
-      preLoaderRoute: typeof FreelancerProfileRouteImport
       parentRoute: typeof FreelancerRouteRoute
     }
     '/project/$projectId': {
@@ -461,6 +471,20 @@ declare module '@tanstack/react-router' {
       path: '/applications/$applicationId'
       fullPath: '/company/applications/$applicationId'
       preLoaderRoute: typeof CompanyApplicationsApplicationIdRouteImport
+      parentRoute: typeof CompanyRouteRoute
+    }
+    '/company/profile/': {
+      id: '/company/profile/'
+      path: '/profile'
+      fullPath: '/company/profile/'
+      preLoaderRoute: typeof CompanyProfileIndexRouteImport
+      parentRoute: typeof CompanyRouteRoute
+    }
+    '/company/profile/update': {
+      id: '/company/profile/update'
+      path: '/profile/update'
+      fullPath: '/company/profile/update'
+      preLoaderRoute: typeof CompanyProfileUpdateRouteImport
       parentRoute: typeof CompanyRouteRoute
     }
     '/company/projects/': {
@@ -489,6 +513,20 @@ declare module '@tanstack/react-router' {
       path: '/applications/$applicationId'
       fullPath: '/freelancer/applications/$applicationId'
       preLoaderRoute: typeof FreelancerApplicationsApplicationIdRouteImport
+      parentRoute: typeof FreelancerRouteRoute
+    }
+    '/freelancer/profile/': {
+      id: '/freelancer/profile/'
+      path: '/profile'
+      fullPath: '/freelancer/profile/'
+      preLoaderRoute: typeof FreelancerProfileIndexRouteImport
+      parentRoute: typeof FreelancerRouteRoute
+    }
+    '/freelancer/profile/update': {
+      id: '/freelancer/profile/update'
+      path: '/profile/update'
+      fullPath: '/freelancer/profile/update'
+      preLoaderRoute: typeof FreelancerProfileUpdateRouteImport
       parentRoute: typeof FreelancerRouteRoute
     }
     '/freelancer/projects/': {
@@ -587,10 +625,11 @@ declare module '@tanstack/react-router' {
 
 interface CompanyRouteRouteChildren {
   CompanyDashboardRoute: typeof CompanyDashboardRoute
-  CompanyProfileRoute: typeof CompanyProfileRoute
   CompanyApplicationsApplicationIdRoute: typeof CompanyApplicationsApplicationIdRoute
+  CompanyProfileUpdateRoute: typeof CompanyProfileUpdateRoute
   CompanyProjectsNewRoute: typeof CompanyProjectsNewRoute
   CompanyApplicationsIndexRoute: typeof CompanyApplicationsIndexRoute
+  CompanyProfileIndexRoute: typeof CompanyProfileIndexRoute
   CompanyProjectsIndexRoute: typeof CompanyProjectsIndexRoute
   CompanyProjectsProjectIdIndexRoute: typeof CompanyProjectsProjectIdIndexRoute
   CompanyProjectsProjectIdDisputesDisputeIdRoute: typeof CompanyProjectsProjectIdDisputesDisputeIdRoute
@@ -602,10 +641,11 @@ interface CompanyRouteRouteChildren {
 
 const CompanyRouteRouteChildren: CompanyRouteRouteChildren = {
   CompanyDashboardRoute: CompanyDashboardRoute,
-  CompanyProfileRoute: CompanyProfileRoute,
   CompanyApplicationsApplicationIdRoute: CompanyApplicationsApplicationIdRoute,
+  CompanyProfileUpdateRoute: CompanyProfileUpdateRoute,
   CompanyProjectsNewRoute: CompanyProjectsNewRoute,
   CompanyApplicationsIndexRoute: CompanyApplicationsIndexRoute,
+  CompanyProfileIndexRoute: CompanyProfileIndexRoute,
   CompanyProjectsIndexRoute: CompanyProjectsIndexRoute,
   CompanyProjectsProjectIdIndexRoute: CompanyProjectsProjectIdIndexRoute,
   CompanyProjectsProjectIdDisputesDisputeIdRoute:
@@ -626,9 +666,10 @@ const CompanyRouteRouteWithChildren = CompanyRouteRoute._addFileChildren(
 
 interface FreelancerRouteRouteChildren {
   FreelancerDashboardRoute: typeof FreelancerDashboardRoute
-  FreelancerProfileRoute: typeof FreelancerProfileRoute
   FreelancerApplicationsApplicationIdRoute: typeof FreelancerApplicationsApplicationIdRoute
+  FreelancerProfileUpdateRoute: typeof FreelancerProfileUpdateRoute
   FreelancerApplicationsIndexRoute: typeof FreelancerApplicationsIndexRoute
+  FreelancerProfileIndexRoute: typeof FreelancerProfileIndexRoute
   FreelancerProjectsIndexRoute: typeof FreelancerProjectsIndexRoute
   FreelancerProjectsProjectIdIndexRoute: typeof FreelancerProjectsProjectIdIndexRoute
   FreelancerProjectsProjectIdDisputesDisputeIdRoute: typeof FreelancerProjectsProjectIdDisputesDisputeIdRoute
@@ -639,10 +680,11 @@ interface FreelancerRouteRouteChildren {
 
 const FreelancerRouteRouteChildren: FreelancerRouteRouteChildren = {
   FreelancerDashboardRoute: FreelancerDashboardRoute,
-  FreelancerProfileRoute: FreelancerProfileRoute,
   FreelancerApplicationsApplicationIdRoute:
     FreelancerApplicationsApplicationIdRoute,
+  FreelancerProfileUpdateRoute: FreelancerProfileUpdateRoute,
   FreelancerApplicationsIndexRoute: FreelancerApplicationsIndexRoute,
+  FreelancerProfileIndexRoute: FreelancerProfileIndexRoute,
   FreelancerProjectsIndexRoute: FreelancerProjectsIndexRoute,
   FreelancerProjectsProjectIdIndexRoute: FreelancerProjectsProjectIdIndexRoute,
   FreelancerProjectsProjectIdDisputesDisputeIdRoute:
