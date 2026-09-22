@@ -41,7 +41,7 @@ function formatBudget(budget: number | null) {
     return "Budget not specified";
   }
 
-  return `₹${budget.toLocaleString()}`;
+  return `ETH ${budget.toLocaleString()}`;
 }
 
 function formatDeadline(deadline: string | null) {

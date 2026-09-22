@@ -19,9 +19,8 @@ import {
 //     publicClient,
 // } from "../lib/blockchain/wagmi";
 
-import {
-    FACTORY_ADDRESS,
-} from "../blockchain/constants";
+
+const FACTORY_ADDRESS = import.meta.env.VITE_TRUSTLANCE_FACTORY_ADDRESS as Address;
 
 import {
     TrustLanceFactoryABI,
