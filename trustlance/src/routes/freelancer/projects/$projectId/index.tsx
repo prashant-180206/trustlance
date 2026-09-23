@@ -411,7 +411,7 @@ function FreelancerProject() {
                       />
 
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        INR
+                        ETH
                       </span>
                     </div>
                   </div>

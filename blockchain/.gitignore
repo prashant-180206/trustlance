@@ -32,3 +32,7 @@
 
 .agents/
 .claude/
+
+.anvil/
+
+# anvil --state ./.anvil/state.json

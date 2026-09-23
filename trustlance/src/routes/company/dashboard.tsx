@@ -13,7 +13,7 @@ import {
 import { useCompanyProjects } from "../../hooks/project.hooks";
 import { useAuth } from "../../hooks/provider/AuthProvider";
 
-import { ErrorMessage, Shell } from "../-components";
+import { Shell } from "../-components";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ErrorMessage } from "@/components/ErrorMessage";
 
 export const Route = createFileRoute("/company/dashboard")({
   component: CompanyDashboard,
@@ -371,7 +372,7 @@ function EmptyProjects() {
         </p>
 
         <Button className="mt-5">
-            <Plus className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-4 w-4" />
           <Link to="/company/projects/new">
             Create project
           </Link>

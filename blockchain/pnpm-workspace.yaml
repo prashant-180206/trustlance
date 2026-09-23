@@ -1,2 +1,3 @@
 allowBuilds:
+  '@foundry-rs/anvil': set this to true or false
   esbuild: true

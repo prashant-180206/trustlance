@@ -828,7 +828,7 @@ function formatAmount(amount: number | null) {
 
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency: "INR",
+    currency: "ETH",
     maximumFractionDigits: 0,
   }).format(amount);
 }
