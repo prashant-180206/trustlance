@@ -15,7 +15,6 @@ interface AuthContextValue {
     session: Session | null;
     user: User | null;
     loading: boolean;
-    accountType: "freelancer" | "company" | null;
     signIn: (accountType: "freelancer" | "company") => Promise<void>;
     signOut: () => Promise<void>;
 }
@@ -31,7 +30,6 @@ export function AuthProvider({
 }) {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
-    const [accountType, setAccountType] = useState<"freelancer" | "company" | null>(null);
 
     useEffect(() => {
         let mounted = true;
@@ -64,8 +62,7 @@ export function AuthProvider({
     }, []);
 
     const signIn = async (accountType: "freelancer" | "company") => {
-        const { accountType: signInAccountType } = await authService.signInWithWallet(accountType);
-        setAccountType(signInAccountType);
+        await authService.signInWithWallet(accountType);
     };
 
     const signOut = async () => {
@@ -80,7 +77,7 @@ export function AuthProvider({
                 user: session?.user ?? null,
                 loading,
                 signIn,
-                accountType,
+
                 signOut,
             }
             }
