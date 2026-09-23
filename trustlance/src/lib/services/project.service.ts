@@ -31,6 +31,25 @@ export class ProjectService {
         companyId: string,
         projectData: CreateProjectData,
     ): Promise<Project> {
+        const title = projectData.title.trim();
+        const description = projectData.description.trim();
+
+        if (!title || !description) {
+            throw new Error("Project title and description are required");
+        }
+
+        if (!Number.isFinite(projectData.budget) || projectData.budget <= 0) {
+            throw new Error("Project budget must be greater than zero");
+        }
+
+        if (projectData.deadline) {
+            const deadline = new Date(`${projectData.deadline}T23:59:59`);
+
+            if (Number.isNaN(deadline.getTime()) || deadline < new Date()) {
+                throw new Error("Project deadline must be today or later");
+            }
+        }
+
         // --------------------------------------------------------
         // 1. Create blockchain escrow FIRST
         // --------------------------------------------------------
@@ -53,7 +72,10 @@ export class ProjectService {
             .from("projects")
             .insert({
                 company_id: companyId,
-                ...projectData,
+                title,
+                description,
+                budget: projectData.budget,
+                deadline: projectData.deadline,
                 escrow_address: escrowAddress,
                 status: "open",
             })
@@ -229,6 +251,24 @@ export class ProjectService {
             throw new Error(
                 "Escrow has already been funded",
             );
+        }
+
+        if (escrowStatus.cancelled) {
+            throw new Error("Escrow has been cancelled");
+        }
+
+        if (
+            milestoneData.amounts.length === 0 ||
+            milestoneData.amounts.length !== milestoneData.descriptions.length
+        ) {
+            throw new Error("At least one complete milestone is required");
+        }
+
+        if (
+            milestoneData.amounts.some((amount) => amount <= 0n) ||
+            milestoneData.descriptions.some((description) => !description.trim())
+        ) {
+            throw new Error("Every milestone needs a positive amount and description");
         }
 
         // --------------------------------------------------------

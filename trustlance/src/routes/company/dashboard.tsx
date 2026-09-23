@@ -13,7 +13,6 @@ import {
 import { useCompanyProjects } from "../../hooks/project.hooks";
 import { useAuth } from "../../hooks/provider/AuthProvider";
 
-import { Shell } from "../-components";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,9 +40,9 @@ function CompanyDashboard() {
 
   if (isLoading) {
     return (
-      <Shell title="Company dashboard" role="company">
-        <DashboardSkeleton />
-      </Shell>
+
+      <DashboardSkeleton />
+
     );
   }
 
@@ -77,129 +76,129 @@ function CompanyDashboard() {
     .slice(0, 5);
 
   return (
-    <Shell title="Company dashboard" role="company">
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              Company workspace
-            </p>
 
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-              Dashboard
-            </h1>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Company workspace
+          </p>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Manage your projects and track your freelance work.
-            </p>
-          </div>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+            Dashboard
+          </h1>
 
-          <Button >
-            <Plus className="mr-2 h-4 w-4" />
-            <Link to="/company/projects/new">
-              Create project
-            </Link>
-          </Button>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your projects and track your freelance work.
+          </p>
         </div>
 
-        <ErrorMessage error={error} />
+        <Button >
+          <Plus className="mr-2 h-4 w-4" />
+          <Link to="/company/projects/new">
+            Create project
+          </Link>
+        </Button>
+      </div>
 
-        {/* Overview */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total projects"
-            value={totalProjects}
-            description="All projects"
-            icon={<FolderOpen className="h-4 w-4" />}
-          />
+      <ErrorMessage error={error} />
 
-          <StatCard
-            title="Open"
-            value={openProjects}
-            description="Looking for freelancers"
-            icon={<BriefcaseBusiness className="h-4 w-4" />}
-          />
+      {/* Overview */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total projects"
+          value={totalProjects}
+          description="All projects"
+          icon={<FolderOpen className="h-4 w-4" />}
+        />
 
-          <StatCard
-            title="In progress"
-            value={activeProjects}
-            description="Currently active"
-            icon={<Clock3 className="h-4 w-4" />}
-          />
+        <StatCard
+          title="Open"
+          value={openProjects}
+          description="Looking for freelancers"
+          icon={<BriefcaseBusiness className="h-4 w-4" />}
+        />
 
-          <StatCard
-            title="Completed"
-            value={completedProjects}
-            description="Successfully completed"
-            icon={<CheckCircle2 className="h-4 w-4" />}
-          />
-        </div>
+        <StatCard
+          title="In progress"
+          value={activeProjects}
+          description="Currently active"
+          icon={<Clock3 className="h-4 w-4" />}
+        />
 
-        {/* Budget overview */}
-        <Card>
-          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border bg-muted">
-                <Wallet className="h-5 w-5" />
-              </div>
+        <StatCard
+          title="Completed"
+          value={completedProjects}
+          description="Successfully completed"
+          icon={<CheckCircle2 className="h-4 w-4" />}
+        />
+      </div>
 
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total project budget
-                </p>
-
-                <p className="text-2xl font-semibold tracking-tight">
-                  {formatBudget(totalBudget)}
-                </p>
-              </div>
+      {/* Budget overview */}
+      <Card>
+        <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border bg-muted">
+              <Wallet className="h-5 w-5" />
             </div>
 
-            <p className="text-sm text-muted-foreground">
-              Across {totalProjects} project
-              {totalProjects === 1 ? "" : "s"}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Projects */}
-        <section>
-          <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">
-                Recent projects
-              </h2>
-
               <p className="text-sm text-muted-foreground">
-                Your most recently updated projects.
+                Total project budget
+              </p>
+
+              <p className="text-2xl font-semibold tracking-tight">
+                {formatBudget(totalBudget)}
               </p>
             </div>
-
-            {projectList.length > 5 && (
-              <Button variant="ghost" size="sm">
-                <Link to="/company/projects">
-                  View all
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            )}
           </div>
 
-          {recentProjects.length === 0 ? (
-            <EmptyProjects />
-          ) : (
-            <div className="space-y-3">
-              {recentProjects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                />
-              ))}
-            </div>
+          <p className="text-sm text-muted-foreground">
+            Across {totalProjects} project
+            {totalProjects === 1 ? "" : "s"}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Projects */}
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">
+              Recent projects
+            </h2>
+
+            <p className="text-sm text-muted-foreground">
+              Your most recently updated projects.
+            </p>
+          </div>
+
+          {projectList.length > 5 && (
+            <Button variant="ghost" size="sm">
+              <Link to="/company/projects">
+                View all
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           )}
-        </section>
-      </div>
-    </Shell>
+        </div>
+
+        {recentProjects.length === 0 ? (
+          <EmptyProjects />
+        ) : (
+          <div className="space-y-3">
+            {recentProjects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+
   );
 }
 

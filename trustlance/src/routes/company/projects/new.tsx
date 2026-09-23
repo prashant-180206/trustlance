@@ -39,13 +39,23 @@ function NewProject() {
 
     if (!user?.id) return;
 
+    const numericBudget = Number(budget);
+
+    if (!Number.isFinite(numericBudget) || numericBudget <= 0) {
+      return;
+    }
+
+    if (deadline && new Date(`${deadline}T23:59:59`) < new Date()) {
+      return;
+    }
+
     createProject.mutate(
       {
         companyId: user.id,
         projectData: {
           title: title.trim(),
           description: description.trim(),
-          budget: Number(budget),
+          budget: numericBudget,
           deadline: deadline || undefined,
         },
       },
@@ -154,8 +164,8 @@ function NewProject() {
                     <Input
                       id="budget"
                       type="number"
-                      min="1"
-                      step="0.01"
+                      min="0.0001"
+                      step="0.0001"
                       value={budget}
                       onChange={(event) =>
                         setBudget(event.target.value)
@@ -180,6 +190,7 @@ function NewProject() {
                   <Input
                     id="deadline"
                     type="date"
+                      min={new Date().toISOString().slice(0, 10)}
                     value={deadline}
                     onChange={(event) =>
                       setDeadline(event.target.value)

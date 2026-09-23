@@ -1,4 +1,5 @@
-import { Outlet, createFileRoute, } from "@tanstack/react-router";
+import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/hooks/provider/AuthProvider";
 import { useFreelancerProfile } from "@/hooks/profile.hooks";
 // import { useEffect } from "react";
@@ -34,5 +35,12 @@ function FreelancerLayout() {
     );
   }
 
-  return <Outlet />;
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar role="freelancer" />
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Outlet />
+      </main>
+    </div>
+  );
 }

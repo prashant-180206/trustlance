@@ -4,8 +4,13 @@ import {
 } from "@tanstack/react-router";
 
 import { useState } from "react";
+import { zeroAddress } from "viem";
 
-import { useProject } from "../../../../hooks/project.hooks";
+import {
+  useProject,
+  useProjectBlockchainStatus,
+  useRequestCancellation,
+} from "../../../../hooks/project.hooks";
 import { useApplyToProject } from "../../../../hooks/application.hooks";
 import { useAuth } from "../../../../hooks/provider/AuthProvider";
 
@@ -27,8 +32,6 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-
-import { Shell } from "../../../-components";
 
 export const Route = createFileRoute(
   "/freelancer/projects/$projectId/",
@@ -100,12 +103,40 @@ function getStatusLabel(status: string) {
   }
 }
 
+function isDeadlinePast(deadline: string | null) {
+  return Boolean(
+    deadline && new Date(`${deadline}T23:59:59`).getTime() < Date.now(),
+  );
+}
+
+function formatEth(amount: bigint) {
+  return `${(Number(amount) / 1e18).toLocaleString(undefined, {
+    maximumFractionDigits: 6,
+  })} ETH`;
+}
+
+function ProjectState({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-md border p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-medium">{value}</p>
+    </div>
+  );
+}
+
 function FreelancerProject() {
   const { projectId } = Route.useParams();
 
   const { user } = useAuth();
 
   const apply = useApplyToProject();
+  const requestCancellation = useRequestCancellation();
 
   const [proposal, setProposal] =
     useState("");
@@ -118,6 +149,8 @@ function FreelancerProject() {
     isLoading,
     error,
   } = useProject(projectId);
+
+  const blockchainQuery = useProjectBlockchainStatus(projectId);
 
   const handleSubmit = (
     event: React.FormEvent<HTMLFormElement>,
@@ -140,308 +173,404 @@ function FreelancerProject() {
 
   if (isLoading) {
     return (
-      <Shell
-        title="Project"
-        role="freelancer"
-      >
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
 
-          <Card>
-            <CardHeader className="space-y-3">
-              <Skeleton className="h-6 w-64" />
-              <Skeleton className="h-4 w-24" />
-            </CardHeader>
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
 
-            <CardContent className="space-y-4">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
+        <Card>
+          <CardHeader className="space-y-3">
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-4 w-24" />
+          </CardHeader>
 
-              <Separator />
+          <CardContent className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
 
-              <div className="grid grid-cols-2 gap-4">
-                <Skeleton className="h-16" />
-                <Skeleton className="h-16" />
-              </div>
-            </CardContent>
-          </Card>
+            <Separator />
 
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </CardHeader>
+            <div className="grid grid-cols-2 gap-4">
+              <Skeleton className="h-16" />
+              <Skeleton className="h-16" />
+            </div>
+          </CardContent>
+        </Card>
 
-            <CardContent className="space-y-4">
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </CardContent>
-          </Card>
-        </div>
-      </Shell>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-48" />
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   if (!project) {
     return (
-      <Shell
-        title="Project"
-        role="freelancer"
-      >
-        <Alert variant="destructive">
-          <AlertDescription>
-            {error?.message ??
-              "Project not found."}
-          </AlertDescription>
-        </Alert>
-      </Shell>
+      <Alert variant="destructive">
+        <AlertDescription>
+          {error?.message ??
+            "Project not found."}
+        </AlertDescription>
+      </Alert>
     );
   }
 
+  const blockchain = blockchainQuery.data;
+  const deadlineExpired = isDeadlinePast(project.deadline);
+  const isAssigned =
+    Boolean(blockchain?.freelancer) &&
+    blockchain?.freelancer !== zeroAddress;
   const canApply =
-    project.status === "open";
+    project.status === "open" &&
+    !deadlineExpired &&
+    !blockchainQuery.isLoading &&
+    !blockchainQuery.error &&
+    !blockchain?.funded &&
+    !blockchain?.cancelled;
+  const canRequestCancellation =
+    isAssigned &&
+    !blockchain?.cancelled &&
+    !blockchain?.freelancerCancellationRequested &&
+    !requestCancellation.isPending;
 
   return (
-    <Shell
-      title={project.title}
-      role="freelancer"
-    >
-      <div className="space-y-6">
 
-        {/* Project header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold tracking-tight">
-                {project.title}
-              </h2>
+    <div className="space-y-6">
 
-              <Badge
-                variant={getStatusVariant(
-                  project.status,
-                )}
-              >
-                {getStatusLabel(
-                  project.status,
-                )}
-              </Badge>
+      {/* Project header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold tracking-tight">
+              {project.title}
+            </h2>
+
+            <Badge
+              variant={getStatusVariant(
+                project.status,
+              )}
+            >
+              {getStatusLabel(
+                project.status,
+              )}
+            </Badge>
+          </div>
+
+          <p className="mt-2 text-sm text-muted-foreground">
+            Posted{" "}
+            {new Date(
+              project.created_at,
+            ).toLocaleDateString(
+              undefined,
+              {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              },
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+
+          variant="outline"
+          size="sm"
+        >
+          <Link
+            to="/freelancer/projects/$projectId/milestones"
+            params={{ projectId }}
+          >
+            Milestones
+          </Link>
+        </Button>
+
+        <Button
+
+          variant="outline"
+          size="sm"
+        >
+          <Link
+            to="/freelancer/projects/$projectId/disputes"
+            params={{ projectId }}
+          >
+            Disputes
+          </Link>
+        </Button>
+      </div>
+
+      {deadlineExpired && (
+        <Alert>
+          <AlertDescription>
+            The application deadline has passed.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Escrow status</CardTitle>
+          <CardDescription>
+            Live assignment and funding state from the project escrow.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {blockchainQuery.isLoading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : blockchainQuery.error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{blockchainQuery.error.message}</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ProjectState
+                label="Funding"
+                value={blockchain?.funded ? "Funded" : "Awaiting funding"}
+              />
+              <ProjectState
+                label="Assignment"
+                value={isAssigned ? "Freelancer assigned" : "Not assigned"}
+              />
+              <ProjectState
+                label="Escrow"
+                value={blockchain ? formatEth(blockchain.totalEscrowed) : "Unavailable"}
+              />
+              <ProjectState
+                label="Cancellation"
+                value={blockchain?.cancelled ? "Cancelled" : "Active"}
+              />
+            </div>
+          )}
+
+          {blockchain?.clientCancellationRequested && (
+            <Alert>
+              <AlertDescription>
+                The company has requested cancellation. You can confirm it below.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {blockchain?.freelancerCancellationRequested && (
+            <Alert>
+              <AlertDescription>
+                Your cancellation request is pending company confirmation.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {requestCancellation.error && (
+            <Alert variant="destructive">
+              <AlertDescription>{requestCancellation.error.message}</AlertDescription>
+            </Alert>
+          )}
+
+          <Button
+            variant="outline"
+            disabled={!canRequestCancellation}
+            onClick={() => requestCancellation.mutate({ projectId })}
+          >
+            {requestCancellation.isPending
+              ? "Requesting cancellation..."
+              : "Request cancellation"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Main layout */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+
+        {/* Project information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Project overview
+            </CardTitle>
+
+            <CardDescription>
+              Details provided by the company.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+
+            <div>
+              <h3 className="mb-2 text-sm font-medium">
+                Description
+              </h3>
+
+              <p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground">
+                {project.description}
+              </p>
             </div>
 
-            <p className="mt-2 text-sm text-muted-foreground">
-              Posted{" "}
-              {new Date(
-                project.created_at,
-              ).toLocaleDateString(
-                undefined,
-                {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                },
-              )}
-            </p>
-          </div>
-        </div>
+            <Separator />
 
-        {/* Navigation */}
-        <div className="flex flex-wrap gap-2">
-          <Button
-
-            variant="outline"
-            size="sm"
-          >
-            <Link
-              to="/freelancer/projects/$projectId/milestones"
-              params={{ projectId }}
-            >
-              Milestones
-            </Link>
-          </Button>
-
-          <Button
-
-            variant="outline"
-            size="sm"
-          >
-            <Link
-              to="/freelancer/projects/$projectId/disputes"
-              params={{ projectId }}
-            >
-              Disputes
-            </Link>
-          </Button>
-        </div>
-
-        {/* Main layout */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-
-          {/* Project information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Project overview
-              </CardTitle>
-
-              <CardDescription>
-                Details provided by the company.
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-6">
-
+            <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <h3 className="mb-2 text-sm font-medium">
-                  Description
-                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Project budget
+                </p>
 
-                <p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground">
-                  {project.description}
+                <p className="mt-1 text-lg font-semibold">
+                  {formatBudget(
+                    project.budget,
+                  )}
                 </p>
               </div>
-
-              <Separator />
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    Project budget
-                  </p>
-
-                  <p className="mt-1 text-lg font-semibold">
-                    {formatBudget(
-                      project.budget,
-                    )}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    Deadline
-                  </p>
-
-                  <p className="mt-1 text-lg font-semibold">
-                    {formatDeadline(
-                      project.deadline,
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <Separator />
 
               <div>
                 <p className="text-xs text-muted-foreground">
-                  Project ID
+                  Deadline
                 </p>
 
-                <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
-                  {project.id}
+                <p className="mt-1 text-lg font-semibold">
+                  {formatDeadline(
+                    project.deadline,
+                  )}
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Application */}
-          <Card className="h-fit">
-            <CardHeader>
-              <CardTitle className="text-base">
-                Submit your proposal
-              </CardTitle>
+            <Separator />
 
-              <CardDescription>
-                Tell the company why you're a good
-                fit for this project.
-              </CardDescription>
-            </CardHeader>
+            <div>
+              <p className="text-xs text-muted-foreground">
+                Project ID
+              </p>
 
-            <CardContent>
-              {!canApply ? (
-                <Alert>
-                  <AlertDescription>
-                    This project is no longer open
-                    for applications.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <form
-                  className="space-y-5"
-                  onSubmit={handleSubmit}
-                >
-                  <div className="space-y-2">
-                    <Label htmlFor="proposal">
-                      Proposal
-                    </Label>
+              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                {project.id}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
-                    <Textarea
-                      id="proposal"
-                      value={proposal}
+        {/* Application */}
+        <Card className="h-fit">
+          <CardHeader>
+            <CardTitle className="text-base">
+              Submit your proposal
+            </CardTitle>
+
+            <CardDescription>
+              Tell the company why you're a good
+              fit for this project.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            {blockchainQuery.isLoading ? (
+              <Alert>
+                <AlertDescription>
+                  Checking the project escrow status...
+                </AlertDescription>
+              </Alert>
+            ) : blockchainQuery.error ? (
+              <Alert variant="destructive">
+                <AlertDescription>{blockchainQuery.error.message}</AlertDescription>
+              </Alert>
+            ) : !canApply ? (
+              <Alert>
+                <AlertDescription>
+                  {deadlineExpired
+                    ? "The application deadline has passed."
+                    : blockchain?.funded
+                      ? "This project has already been funded."
+                      : blockchain?.cancelled
+                        ? "This project has been cancelled."
+                        : "This project is no longer open for applications."}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <form
+                className="space-y-5"
+                onSubmit={handleSubmit}
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="proposal">
+                    Proposal
+                  </Label>
+
+                  <Textarea
+                    id="proposal"
+                    value={proposal}
+                    onChange={(event) =>
+                      setProposal(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Explain your experience, approach, and why you're a good fit..."
+                    rows={7}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="proposed-amount">
+                    Proposed amount
+                  </Label>
+
+                  <div className="relative">
+                    <Input
+                      id="proposed-amount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={
+                        proposedAmount
+                      }
                       onChange={(event) =>
-                        setProposal(
+                        setProposedAmount(
                           event.target.value,
                         )
                       }
-                      placeholder="Explain your experience, approach, and why you're a good fit..."
-                      rows={7}
+                      placeholder="0"
                       required
                     />
+
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      ETH
+                    </span>
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="proposed-amount">
-                      Proposed amount
-                    </Label>
+                {apply.error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      {apply.error.message}
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-                    <div className="relative">
-                      <Input
-                        id="proposed-amount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={
-                          proposedAmount
-                        }
-                        onChange={(event) =>
-                          setProposedAmount(
-                            event.target.value,
-                          )
-                        }
-                        placeholder="0"
-                        required
-                      />
-
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        ETH
-                      </span>
-                    </div>
-                  </div>
-
-                  {apply.error && (
-                    <Alert variant="destructive">
-                      <AlertDescription>
-                        {apply.error.message}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={
-                      apply.isPending ||
-                      !user?.id
-                    }
-                  >
-                    {apply.isPending
-                      ? "Submitting..."
-                      : "Submit proposal"}
-                  </Button>
-                </form>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={
+                    apply.isPending ||
+                    !user?.id
+                  }
+                >
+                  {apply.isPending
+                    ? "Submitting..."
+                    : "Submit proposal"}
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </Shell>
+    </div>
+
   );
 }

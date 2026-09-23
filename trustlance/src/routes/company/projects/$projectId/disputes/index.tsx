@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { Shell } from "../../../../-components";
 
 export const Route = createFileRoute(
   "/company/projects/$projectId/disputes/",
@@ -80,156 +79,145 @@ function CompanyDisputesList() {
 
   if (isLoading) {
     return (
-      <Shell
-        title="Project disputes"
-        role="company"
-      >
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-72" />
-            </div>
 
-            <Skeleton className="h-7 w-28" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72" />
           </div>
 
-          <div className="space-y-3">
-            {[1, 2].map((item) => (
-              <Card key={item}>
-                <CardContent className="p-6">
-                  <div className="space-y-3">
-                    <Skeleton className="h-5 w-44" />
-                    <Skeleton className="h-4 w-64" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Skeleton className="h-7 w-28" />
         </div>
-      </Shell>
+
+        <div className="space-y-3">
+          {[1, 2].map((item) => (
+            <Card key={item}>
+              <CardContent className="p-6">
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-44" />
+                  <Skeleton className="h-4 w-64" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
     );
   }
 
   if (addressError || listError) {
     return (
-      <Shell
-        title="Project disputes"
-        role="company"
-      >
-        <Alert variant="destructive">
-          <AlertDescription>
-            {addressError?.message ??
-              listError?.message ??
-              "Unable to load disputes."}
-          </AlertDescription>
-        </Alert>
-      </Shell>
+
+      <Alert variant="destructive">
+        <AlertDescription>
+          {addressError?.message ??
+            listError?.message ??
+            "Unable to load disputes."}
+        </AlertDescription>
+      </Alert>
     );
   }
 
   return (
-    <Shell
-      title="Project disputes"
-      role="company"
-    >
-      <div className="space-y-6">
+    <div className="space-y-6">
 
-        {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">
-              Project disputes
-            </h2>
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">
+            Project disputes
+          </h2>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Review milestones that require dispute
-              resolution.
-            </p>
-          </div>
-
-          <Badge variant="destructive">
-            {disputedMilestones.length}{" "}
-            {disputedMilestones.length === 1
-              ? "Active dispute"
-              : "Active disputes"}
-          </Badge>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review milestones that require dispute
+            resolution.
+          </p>
         </div>
 
-        {/* Disputes */}
-        {disputedMilestones.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="rounded-full bg-muted p-3">
-                <span className="text-lg">
-                  ✓
-                </span>
-              </div>
+        <Badge variant="destructive">
+          {disputedMilestones.length}{" "}
+          {disputedMilestones.length === 1
+            ? "Active dispute"
+            : "Active disputes"}
+        </Badge>
+      </div>
 
-              <h3 className="mt-4 font-semibold">
-                No active disputes
-              </h3>
+      {/* Disputes */}
+      {disputedMilestones.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="rounded-full bg-muted p-3">
+              <span className="text-lg">
+                ✓
+              </span>
+            </div>
 
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                There are currently no milestones in
-                dispute for this project.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {disputedMilestones.map(
-              ({ milestone, index }) => (
-                <Card key={index}>
-                  <CardContent className="p-5">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="mt-4 font-semibold">
+              No active disputes
+            </h3>
 
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-semibold">
-                            Milestone {index + 1}
-                          </h3>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              There are currently no milestones in
+              dispute for this project.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {disputedMilestones.map(
+            ({ milestone, index }) => (
+              <Card key={index}>
+                <CardContent className="p-5">
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 
-                          <Badge variant="destructive">
-                            {getMilestoneStatusLabel(
-                              milestone.status,
-                            )}
-                          </Badge>
-                        </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold">
+                          Milestone {index + 1}
+                        </h3>
 
-                        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                          {milestone.description}
-                        </p>
-
-                        <p className="mt-2 text-sm font-medium">
-                          {formatEth(
-                            milestone.amount,
-                          )}{" "}
-                          locked in dispute
-                        </p>
+                        <Badge variant="destructive">
+                          {getMilestoneStatusLabel(
+                            milestone.status,
+                          )}
+                        </Badge>
                       </div>
 
-                      <Button >
-                        <Link
-                          to="/company/projects/$projectId/disputes/$disputeId"
-                          params={{
-                            projectId,
-                            disputeId:
-                              index.toString(),
-                          }}
-                        >
-                          Review dispute
-                        </Link>
-                      </Button>
+                      <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                        {milestone.description}
+                      </p>
+
+                      <p className="mt-2 text-sm font-medium">
+                        {formatEth(
+                          milestone.amount,
+                        )}{" "}
+                        locked in dispute
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              ),
-            )}
-          </div>
-        )}
-      </div>
-    </Shell>
+
+                    <Button >
+                      <Link
+                        to="/company/projects/$projectId/disputes/$disputeId"
+                        params={{
+                          projectId,
+                          disputeId:
+                            index.toString(),
+                        }}
+                      >
+                        Review dispute
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ),
+          )}
+        </div>
+      )}
+    </div>
+
   );
 }

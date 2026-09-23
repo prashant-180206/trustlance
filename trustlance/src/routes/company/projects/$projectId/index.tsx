@@ -1,11 +1,11 @@
 
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import type { Address } from "viem";
+import { parseEther, zeroAddress, type Address } from "viem";
 
 import {
   useProject,
-  // useProjectEscrow,
+  useProjectFreelancer,
   useProjectBlockchainStatus,
   useFundProject,
   useRequestCancellation,
@@ -43,8 +43,8 @@ function CompanyProject() {
   const { projectId } = Route.useParams();
 
   const projectQuery = useProject(projectId);
-  // const escrowQuery = useProjectEscrow(projectId);
   const blockchainQuery = useProjectBlockchainStatus(projectId);
+  const freelancerQuery = useProjectFreelancer(projectId);
   const applicationsQuery = useProjectApplications(projectId);
 
   const fund = useFundProject();
@@ -58,6 +58,7 @@ function CompanyProject() {
       description: "",
     },
   ]);
+  const [fundFormError, setFundFormError] = useState<string | null>(null);
 
   const isFunding = fund.isPending;
   const isCancelling =
@@ -99,9 +100,15 @@ function CompanyProject() {
   }
 
   const blockchain = blockchainQuery.data;
+  const acceptedWallet =
+    freelancerQuery.data?.freelancer_profiles?.profiles?.wallet_address ??
+    "";
+  const selectedWallet = acceptedWallet || freelancerWallet.trim();
 
   const canFund =
     Boolean(project.escrow_address) &&
+    Boolean(selectedWallet) &&
+    !blockchainQuery.isLoading &&
     !blockchain?.funded &&
     !blockchain?.cancelled &&
     !isFunding;
@@ -109,6 +116,13 @@ function CompanyProject() {
   const canCancelBeforeAward =
     !blockchain?.funded &&
     !blockchain?.cancelled &&
+    blockchain?.freelancer === zeroAddress &&
+    !isCancelling;
+
+  const canRequestCancellation =
+    !blockchain?.cancelled &&
+    Boolean(blockchain?.freelancer && blockchain.freelancer !== zeroAddress) &&
+    !blockchain?.clientCancellationRequested &&
     !isCancelling;
 
   const addMilestone = () => {
@@ -145,20 +159,30 @@ function CompanyProject() {
   };
 
   const handleFund = () => {
-    if (!project.escrow_address) return;
+    setFundFormError(null);
 
-    if (!freelancerWallet.trim()) return;
+    if (!project.escrow_address || !selectedWallet) {
+      setFundFormError("Accept a freelancer application before funding the project.");
+      return;
+    }
 
     try {
-      const wallet = freelancerWallet.trim() as Address;
+      const wallet = selectedWallet as Address;
 
       const amounts = milestones.map((milestone) =>
-        BigInt(milestone.amount),
+        parseEther(milestone.amount),
       );
 
       const descriptions = milestones.map(
         (milestone) => milestone.description.trim(),
       );
+
+      if (
+        amounts.some((amount) => amount <= 0n) ||
+        descriptions.some((description) => !description)
+      ) {
+        throw new Error("Every milestone needs a positive ETH amount and description.");
+      }
 
       fund.mutate({
         projectId,
@@ -169,7 +193,9 @@ function CompanyProject() {
         },
       });
     } catch (error) {
-      console.error("Invalid milestone data", error);
+      setFundFormError(
+        error instanceof Error ? error.message : "Invalid milestone data",
+      );
     }
   };
 
@@ -327,7 +353,7 @@ function CompanyProject() {
                 </span>
 
                 <span className="font-medium">
-                  {blockchain.totalEscrowed.toString()} wei
+                  {formatEth(blockchain.totalEscrowed)}
                 </span>
               </div>
             )}
@@ -438,17 +464,18 @@ function CompanyProject() {
 
             <Input
               id="freelancer-wallet"
-              value={freelancerWallet}
+              value={acceptedWallet || freelancerWallet}
               onChange={(event) =>
                 setFreelancerWallet(event.target.value)
               }
               placeholder="0x..."
-              disabled={!canFund}
+              disabled={!canFund || Boolean(acceptedWallet)}
             />
 
             <p className="text-xs text-muted-foreground">
-              Enter the wallet address that will receive the
-              project award.
+              {acceptedWallet
+                ? "Using the wallet from the accepted freelancer application."
+                : "Accept a freelancer application to select the award wallet."}
             </p>
           </div>
 
@@ -497,9 +524,9 @@ function CompanyProject() {
                       <Input
                         id={`milestone-amount-${index}`}
                         type="number"
-                        min="1"
-                        step="1"
-                        placeholder="Amount in wei"
+                        min="0.0001"
+                        step="0.0001"
+                        placeholder="Amount in ETH"
                         value={milestone.amount}
                         onChange={(event) =>
                           updateMilestone(
@@ -559,6 +586,12 @@ function CompanyProject() {
             </Alert>
           )}
 
+          {fundFormError && (
+            <Alert variant="destructive">
+              <AlertDescription>{fundFormError}</AlertDescription>
+            </Alert>
+          )}
+
           <Separator />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -583,8 +616,7 @@ function CompanyProject() {
         <CardHeader>
           <CardTitle>Project cancellation</CardTitle>
           <CardDescription>
-            Manage cancellation before the project has been
-            awarded.
+            Request a mutual cancellation after award or cancel directly before award.
           </CardDescription>
         </CardHeader>
 
@@ -609,7 +641,7 @@ function CompanyProject() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button
               variant="outline"
-              disabled={!canCancelBeforeAward}
+              disabled={!canRequestCancellation}
               onClick={() =>
                 requestCancellation.mutate({
                   projectId,
@@ -635,6 +667,14 @@ function CompanyProject() {
                 : "Cancel before award"}
             </Button>
           </div>
+
+          {blockchain?.freelancerCancellationRequested && (
+            <Alert>
+              <AlertDescription>
+                The freelancer has requested cancellation. Confirming it will refund the remaining escrow to the client.
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
@@ -675,7 +715,9 @@ function CompanyProject() {
               <BlockchainValue
                 label="Total escrowed"
                 value={
-                  blockchain?.totalEscrowed?.toString()
+                  blockchain?.totalEscrowed === undefined
+                    ? undefined
+                    : formatEth(blockchain.totalEscrowed)
                 }
               />
 
@@ -821,6 +863,12 @@ function EmptyState({ message }: { message: string }) {
       </p>
     </div>
   );
+}
+
+function formatEth(amount: bigint) {
+  return `${(Number(amount) / 1e18).toLocaleString(undefined, {
+    maximumFractionDigits: 6,
+  })} ETH`;
 }
 
 function formatAmount(amount: number | null) {
