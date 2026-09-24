@@ -2,7 +2,7 @@ SET local check_function_bodies = off;
 
 CREATE TABLE "public"."applications" (
   "id"              uuid                     NOT NULL DEFAULT gen_random_uuid(),
-  "project_id"      uuid                     NOT NULL,
+  "project_id"      uuid                     NOT NULL, 
   "freelancer_id"   uuid                     NOT NULL,
   "proposal"        text,
   "proposed_amount" numeric(36,18),
