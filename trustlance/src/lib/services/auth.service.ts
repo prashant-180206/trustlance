@@ -10,7 +10,7 @@ export class AuthService {
                 "Sign in to TrustLance. By signing this message, you agree to the TrustLance Terms of Service.",
         });
 
-        if (error) {
+        if (error) {  
             throw error;
         }
 
