@@ -1,0 +1,62 @@
+@startuml
+title TrustLance Escrow - Functional Workflow
+
+start
+
+:Client initializes project & defines milestones;
+
+if (Client funds the escrow?) then (Yes)
+    :Funds are locked in the contract;
+else (No)
+    stop
+endif
+
+if (Freelancer assigned?) then (Yes)
+    :Project officially begins;
+else (No)
+    :Client cancels project and receives a full refund;
+    stop
+endif
+
+repeat
+    partition "Milestone Workflow" {
+        :Freelancer completes and submits work;
+        
+        if (Client responds before review deadline?) then (Yes)
+            if (Client approves?) then (Yes)
+                :Payment is automatically released to freelancer;
+            else (Client rejects)
+                :Funds remain locked;
+                
+                if (Freelancer raises a dispute?) then (Yes)
+                    :Dispute window opens;
+                    
+                    if (Client withdraws rejection?) then (Yes)
+                        :Payment is released to freelancer;
+                    else if (Freelancer accepts rejection?) then (Yes)
+                        :Funds are refunded to client;
+                    else (No agreement reached)
+                        :Dispute period expires;
+                        :Automatic rule favors freelancer;\n(Funds released to freelancer);
+                    endif
+                else (No dispute raised)
+                    :Milestone remains rejected;\nFunds stay locked;
+                endif
+            endif
+        else (Review deadline passes)
+            :System auto-approves milestone;\nPayment is released to freelancer;
+        endif
+    }
+repeat while (More milestones remaining?) is (Yes)
+-> No;
+
+if (Mutual cancellation requested by both parties?) then (Yes)
+    :Project is cancelled;\nRemaining funds are refunded to client;
+else (No)
+    :Project completes normally;
+endif
+
+:Project finished;
+stop
+
+@enduml

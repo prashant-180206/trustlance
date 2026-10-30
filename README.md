@@ -981,6 +981,4 @@ Supabase synchronization
 
 # License
 
-Add the project's license information here.
-
 ```

@@ -1,0 +1,56 @@
+[project]
+name = "trustlance-bot"
+version = "0.1.0"
+description = "Read-only Telegram bot for browsing and searching TrustLance projects"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiosqlite>=0.22",
+    "cachetools>=7.2",
+    "httpx>=0.28",
+    "pydantic-settings>=2.16",
+    "python-telegram-bot>=22.8",
+    "structlog>=26.1",
+    "supabase>=2.33",
+    "tenacity>=9.2",
+    "web3>=8.0,<9",
+]
+
+[project.scripts]
+trustlance-bot = "trustlance_bot:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4",
+    "pytest>=9",
+    "pytest-asyncio>=1.4",
+    "respx>=0.23",
+    "ruff>=0.17",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
+# Telegram messages intentionally use emoji such as ℹ️.
+ignore = ["RUF001"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["src", "tests"]
+check_untyped_defs = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true

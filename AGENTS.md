@@ -1,10 +1,11 @@
 # AGENTS.md
 
-TrustLance is a decentralized freelancing platform (escrow contracts + Supabase + Next.js). This repo is three independent packages — no root `package.json`, no shared workspace. Run installs and commands inside each package dir, not from the root.
+TrustLance is a decentralized freelancing platform (escrow contracts + Supabase + Next.js). This repo is four independent packages — no root `package.json`, no shared workspace. Run installs and commands inside each package dir, not from the root.
 
 - `trustlance/` — Next.js 16 app. See `trustlance/AGENTS.md`.
 - `blockchain/` — Hardhat 3 + Solidity. See `blockchain/AGENTS.md` and the `hardhat` skill under `blockchain/.agents/skills/`.
 - `supabase/` — Postgres migrations + `config.toml`. No Edge Functions exist yet.
+- `telegram-bot/` — Python 3.13 + uv Telegram client for browsing/searching projects. See `telegram-bot/README.md` and the `telegram-bot` skill under `.agents/skills/`.
 
 ## trustlance (Next.js 16)
 - Next 16.3.4 / React 19 / pnpm 12.3.4. Next 16 has breaking changes: `next dev` maintains the `BEGIN:nextjs-agent-rules` block in `trustlance/AGENTS.md` — read `node_modules/next/dist/docs/` before writing Next code and keep that block intact.
@@ -22,3 +23,11 @@ TrustLance is a decentralized freelancing platform (escrow contracts + Supabase 
 - Only `migrations/` so far (initial schema: projects/milestones/proposals/disputes/dao_votes/files/notifications/transactions/auth_nonces, plus `handle_new_user` and `after_vote_cast` triggers). No `functions/`, RLS policies, seeds, or `index-chain-events` yet.
 - Regenerate committed `trustlance/src/types/database.types.ts` via `supabase gen types typescript --linked` — never hand-edit.
 - Local dev: `supabase start` / `supabase stop`; push schema with `supabase db push`. Local DB is Postgres 17.
+
+## telegram-bot (Python 3.13 + uv)
+- Managed with **uv only** — never `pip` or a hand-made venv. From `telegram-bot/`: `uv sync`, `uv add <pkg>`, `uv run ...`. Commit `uv.lock`.
+- Read-only by design: no private keys, no transaction signing, no custody. State-changing actions link out to the web app.
+- Data comes from Supabase `projects` (service-role key, server-side only) and the factory/escrow contracts via `web3.py` `AsyncWeb3`. Chain is Anvil 31337.
+- ABIs are generated from `blockchain/artifacts/`; never hand-edit the JSON.
+- Checks: `uv run pytest`, `uv run ruff check .`, `uv run mypy src`.
+- Load the `telegram-bot` skill under `.agents/skills/` before adding handlers, queries, or contract reads.
